@@ -1,0 +1,26 @@
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, func
+from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    species = Column(String, nullable=False)
+    sku = Column(String, unique=True, nullable=False)
+    unit = Column(String, nullable=False, default="lb")
+    price_per_unit = Column(Numeric(10, 2), nullable=False)
+    quantity_on_hand = Column(Integer, nullable=False, default=0)
+    reorder_threshold = Column(Integer, nullable=False, default=50)
+    warehouse_location = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    order_items = relationship("OrderItem", back_populates="product")
+
+    @property
+    def is_low_stock(self) -> bool:
+        return self.quantity_on_hand <= self.reorder_threshold
