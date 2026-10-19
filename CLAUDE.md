@@ -137,9 +137,24 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - Commit in small logical steps with imperative messages
   (`Force CUSTOMER role on self-registration`).
 - Never merge your own PR, never force-push, and never push to `main`. The owner merges.
+- Before pushing a follow-up to a PR's branch, check it's still open
+  (`gh pr view <n> --json state`). If it's already merged, put the follow-up on a new
+  branch from `origin/main` and open a new PR. Commits pushed after a merge never reach
+  `main`, and GitHub silently stops running CI for them.
 - PR title: `B<n>: <summary>` (for example, `B1: Stop self-registration as admin`).
 - PR body sections: **Problem**, **Fix**, **Decisions I made**, **Behaviour/API changes**,
   **Interactions with open PRs**, **Testing**, **Not tested**.
+
+### Passwords and secrets
+
+- Never write a password, token, key or connection-string password into anything that
+  reaches GitHub: commits, PR titles and descriptions, comments, `docs/backlog.md` or
+  test data. This includes the demo logins: refer to them as "the demo admin login in
+  `seed.py`", not by value.
+- Test accounts use obviously fake, test-only passwords (as in `tests/helpers.py`), never
+  a real or demo password.
+- Before pushing, search the diff and the PR description for the demo passwords and
+  for strings like `password=`, `secret` and `token`.
 
 ### Attribution
 

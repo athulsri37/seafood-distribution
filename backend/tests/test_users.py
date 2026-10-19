@@ -9,7 +9,7 @@ from tests.helpers import Headers
 
 NEW_ACCOUNT = {
     "email": "jamie.chen@example.com",
-    "password": "Distributor123!",
+    "password": "Test-only-pw-1",
     "full_name": "Jamie Chen",
     "company_name": "Gulf Coast Distribution",
 }
