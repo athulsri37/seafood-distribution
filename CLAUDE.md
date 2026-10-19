@@ -52,17 +52,37 @@ npm run dev                                       # http://localhost:5173, proxi
 
 Demo logins are in `README.md`.
 
+### Running the tests
+
+```bash
+docker run --rm -d --name seafood-test-db -p 5433:5432 \
+  -e POSTGRES_PASSWORD=test -e POSTGRES_DB=seafood_test postgres:16-alpine
+cd backend && pip install -r requirements-dev.txt
+TEST_DATABASE_URL=postgresql://postgres:test@localhost:5433/seafood_test pytest
+cd ../frontend && npm ci && npm run build      # type-check and build
+docker stop seafood-test-db
+```
+
+The suite exits with code 4 if `TEST_DATABASE_URL` is unset. That's deliberate: it
+truncates every table after each test.
+
 ### Known traps (until their backlog items are fixed)
 
-- `docker compose up` does not work: wrong backend port and wrong proxy target (#17).
+- `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
 - There are no migrations. `Base.metadata.create_all()` creates missing tables but
-  never alters existing ones (#18). After a model change, test against a fresh database.
-- The Vite proxy target is hard-coded to `localhost:8000` (#17).
-- Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (#2).
+  never alters existing ones (B18). After a model change, test against a fresh database.
+- The Vite proxy target is hard-coded to `localhost:8000` (B17).
+- Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
+- `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
+  raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
+- Pydantic models still use the v1-style `class Config`, which prints deprecation
+  warnings in test runs (B23). They're expected until that item is fixed.
 
 ## Backlog
 
-`docs/backlog.md` is the source of truth for the fix items, which are numbered `#1`–`#21`.
+`docs/backlog.md` is the source of truth for the fix items. Each has a stable ID: `B1`, `B2`, and so on.
+Always write item IDs as `B<n>`, never `#<n>`: on GitHub, `#<n>` links to pull request or
+issue n, so `#2` would point at the wrong thing.
 When an item is done, its PR marks it fixed there. The shareable review page mirrors
 it. See "Tracking progress" below.
 
@@ -88,7 +108,19 @@ in the PR, with the alternative you rejected. When you must ask, put all questio
 one message, each with your recommendation.
 
 If you find a new problem while fixing an item, don't fix it in the same branch.
-Add it to `docs/backlog.md` as a new item and mention it in the PR.
+Add it to `docs/backlog.md` as a new item and mention it in the PR. The one exception
+is a problem that blocks the item (for example, tests can't run at all). Fix that in
+the same branch, add it to the backlog as fixed by this PR, and explain it under
+"Decisions I made".
+
+If your branch needs another open PR's changes, merge that PR's branch into yours,
+say so under "Interactions with open PRs", and ask for the other PR to be merged first.
+After it's squash-merged, merge `origin/main` into your branch so the diff shrinks
+back to your own changes. Because the squash commit isn't an ancestor of your branch,
+any file both PRs changed reports an add/add conflict. First confirm that `main` holds
+exactly the other PR's content (`git diff <its last commit> origin/main` prints nothing).
+Then keep your side (`git checkout --ours <files>`), and check that the merge commit's
+tree matches your branch's tree from before the merge. Never force-push to avoid this.
 
 ### Branches and PRs
 
@@ -102,7 +134,7 @@ Add it to `docs/backlog.md` as a new item and mention it in the PR.
 - Commit in small logical steps with imperative messages
   (`Force CUSTOMER role on self-registration`).
 - Never merge your own PR, never force-push, and never push to `main`. The owner merges.
-- PR title: `#<n> <summary>` (for example, `#1 Stop self-registration as admin`).
+- PR title: `B<n>: <summary>` (for example, `B1: Stop self-registration as admin`).
 - PR body sections: **Problem**, **Fix**, **Decisions I made**, **Behaviour/API changes**,
   **Interactions with open PRs**, **Testing**, **Not tested**.
 
@@ -112,13 +144,14 @@ Add it to `docs/backlog.md` as a new item and mention it in the PR.
   commits or PR bodies.
 - Check before pushing:
   `git log origin/main..HEAD --format=%B | grep -iE "co-authored-by|generated with|claude-session|claude\.ai/code"`
-  must print nothing. Apply the same check to the PR description.
+  must print nothing. Apply the same check to the PR description. The `attribution`
+  workflow repeats both checks on every PR and whenever its description is edited.
 
 ### Definition of done (all of these, every PR)
 
 1. **Backend tests:** `pytest` from `backend/` passes, and the PR adds tests that fail
-   without the fix and pass with it. (The test harness is being set up under #19. Until
-   it exists, building it is the first step of whichever item comes first.)
+   without the fix and pass with it. If the item has an `xfail` test, remove the marker:
+   it is the first test the fix has to pass.
 2. **Frontend checks:** `npm run build` from `frontend/` (runs `tsc` and the Vite build)
    passes with no new type errors.
 3. **Real API against a throwaway database,** covering success and error paths
@@ -175,6 +208,15 @@ Add it to `docs/backlog.md` as a new item and mention it in the PR.
   locking, constraints and enums behave differently). Each test runs on a clean database.
 - Name tests after the behaviour (`test_customer_cannot_register_as_admin`).
 - Cover the happy path, permission failures and edge cases for every changed endpoint.
+- Fixtures live in `tests/conftest.py` (`client`, `db`, `make_user`, `make_product`,
+  `auth_headers`, and `admin` / `distributor` / `customer`). Plain helpers and shared
+  types live in `tests/helpers.py`. Never import from `conftest.py`.
+- A known bug that isn't being fixed yet can get a test marked
+  `@pytest.mark.xfail(reason="B<n>: <what's wrong>")`. `xfail_strict` is on, so the
+  run fails as soon as a fix makes it pass, and the fix's PR has to remove the marker.
+  Check with `pytest --runxfail` that it fails on the bug's assertion, not on an error.
+- Role rules are tested as a matrix in `tests/test_permissions.py`. When an endpoint
+  or role rule changes, update the matrix.
 
 ### Self-review before opening the PR
 
@@ -204,9 +246,13 @@ say so in the PR.
 
 ### Repository settings
 
-- `main` is protected. Changes arrive only through pull requests, and force-pushes
-  and deletion are blocked, for admins too.
+- `main` is protected. Changes arrive only through pull requests, history stays linear,
+  conversations must be resolved, and force-pushes and deletion are blocked, for admins too.
+  No approving review is required: the owner is the only maintainer and GitHub doesn't
+  let you approve your own PR, so the owner merging is the review.
 - Squash merge is the only merge method. The PR title and description become the
   commit on `main`, so write them carefully.
-- Once CI exists (#19), its job names are required status checks. Renaming a job means
-  updating branch protection in the same PR, or every PR waits on a check that never runs.
+- Required status checks are the job names `backend` and `frontend` (in
+  `.github/workflows/ci.yml`) and `attribution` (in `.github/workflows/attribution.yml`).
+  Renaming a job means updating branch protection in the same PR, or every PR waits on
+  a check that never runs.
