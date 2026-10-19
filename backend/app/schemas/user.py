@@ -7,11 +7,29 @@ from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
+    """Self-registration. Only customer accounts can be created this way."""
+
     email: EmailStr
     password: str
     full_name: str
     company_name: Optional[str] = None
+    # Kept so that a request for a staff role gets a clear error instead of
+    # silently becoming a customer account.
     role: UserRole = UserRole.CUSTOMER
+
+
+class AdminUserCreate(BaseModel):
+    """An admin creating an account with any role."""
+
+    email: EmailStr
+    password: str
+    full_name: str
+    company_name: Optional[str] = None
+    role: UserRole
+
+
+class RoleUpdate(BaseModel):
+    role: UserRole
 
 
 class UserOut(BaseModel):

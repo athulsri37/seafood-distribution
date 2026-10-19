@@ -128,12 +128,16 @@ GitHub Actions runs both on every pull request (`.github/workflows/ci.yml`).
 
 ## API Endpoints (selected)
 
-- `POST /api/auth/register` / `POST /api/auth/login` — authentication
+- `POST /api/auth/register` / `POST /api/auth/login` — authentication. Sign-up creates
+  customer accounts only; asking for another role returns 403.
 - `GET/POST /api/products` — inventory listing & creation
 - `PATCH /api/products/{id}` — stock/price updates
 - `GET/POST /api/orders` — order listing & creation (stock-aware)
 - `PATCH /api/orders/{id}/status` — order status transitions
 - `GET /api/reports/dashboard` — aggregated sales & inventory metrics
+- `GET/POST /api/users` — list users and create an account with any role (admin only)
+- `PATCH /api/users/{id}/role` — change a user's role (admin only; admins can't remove
+  their own admin role)
 
 Full interactive API documentation is available at `/docs` once the backend is running.
 

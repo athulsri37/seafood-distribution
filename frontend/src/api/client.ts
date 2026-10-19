@@ -25,3 +25,12 @@ client.interceptors.response.use(
 );
 
 export default client;
+
+/** The API's error message for a failed request, or `fallback` if it didn't send a readable one. */
+export function errorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const detail: unknown = err.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+  }
+  return fallback;
+}

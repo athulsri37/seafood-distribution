@@ -10,6 +10,12 @@ from app.models.user import User, UserRole
 from tests.helpers import Headers
 
 NEW_PRODUCT = {"name": "Halibut", "species": "Halibut", "sku": "HAL-001", "price_per_unit": 18.5}
+NEW_STAFF = {
+    "email": "new.staff@example.com",
+    "password": "Staff123!",
+    "full_name": "New Staff",
+    "role": "DISTRIBUTOR",
+}
 
 
 def call(client: TestClient, action: str, product: Product, headers: dict[str, str]) -> Response:
@@ -26,6 +32,11 @@ def call(client: TestClient, action: str, product: Product, headers: dict[str, s
         return client.get("/api/reports/dashboard", headers=headers)
     if action == "list_users":
         return client.get("/api/users", headers=headers)
+    if action == "create_user":
+        return client.post("/api/users", json=NEW_STAFF, headers=headers)
+    if action == "change_user_role":
+        # User 999 doesn't exist: admins get 404, everyone else is stopped first.
+        return client.patch("/api/users/999/role", json={"role": "DISTRIBUTOR"}, headers=headers)
     raise ValueError(action)
 
 
@@ -37,6 +48,8 @@ MATRIX = [
     ("update_order_status", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 404, UserRole.ADMIN: 404}),
     ("dashboard", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 200, UserRole.ADMIN: 200}),
     ("list_users", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 403, UserRole.ADMIN: 200}),
+    ("create_user", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 403, UserRole.ADMIN: 201}),
+    ("change_user_role", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 403, UserRole.ADMIN: 404}),
 ]
 CASES = [(action, role, status) for action, expected in MATRIX for role, status in expected.items()]
 
