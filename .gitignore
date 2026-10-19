@@ -6,3 +6,9 @@ build/
 *.log
 .DS_Store
 backend/generated/
+
+# Python
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
