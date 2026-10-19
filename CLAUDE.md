@@ -141,6 +141,17 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - PR body sections: **Problem**, **Fix**, **Decisions I made**, **Behaviour/API changes**,
   **Interactions with open PRs**, **Testing**, **Not tested**.
 
+### Passwords and secrets
+
+- Never write a password, token, key or connection-string password into anything that
+  reaches GitHub: commits, PR titles and descriptions, comments, `docs/backlog.md` or
+  test data. This includes the demo logins: refer to them as "the demo admin login in
+  `seed.py`", not by value.
+- Test accounts use obviously fake, test-only passwords (as in `tests/helpers.py`), never
+  a real or demo password.
+- Before pushing, search the diff and the PR description for the demo passwords and
+  for strings like `password=`, `secret` and `token`.
+
 ### Attribution
 
 - No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in
