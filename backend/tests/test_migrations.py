@@ -1,5 +1,8 @@
 """The Alembic migrations and the SQLAlchemy models must describe the same schema."""
 import runpy
+from collections.abc import Callable
+
+import pytest
 
 from alembic import command
 from alembic.autogenerate import compare_metadata
@@ -7,6 +10,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import Base, engine
@@ -52,3 +56,33 @@ def test_seed_script_loads_demo_data_once(db: Session) -> None:
 
     assert db.query(User).count() == 3
     assert db.query(Product).count() == 5
+
+
+def test_database_rejects_negative_stock(db: Session, make_product: Callable[..., Product]) -> None:
+    product = make_product(quantity_on_hand=1)
+
+    with pytest.raises(IntegrityError, match="products_quantity_on_hand_non_negative_check"):
+        db.execute(text("UPDATE products SET quantity_on_hand = -1 WHERE id = :id"), {"id": product.id})
+    db.rollback()
+
+
+def test_stock_constraint_migration_refuses_negative_stock(alembic_config: Config) -> None:
+    command.downgrade(alembic_config, "9974bc68bdcd")
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO products (name, species, sku, unit, price_per_unit, quantity_on_hand, reorder_threshold) "
+                "VALUES ('Oversold Tuna', 'Tuna', 'TUN-NEG', 'lb', 10, -3, 5)"
+            ))
+
+        with pytest.raises(RuntimeError, match=r"TUN-NEG \(-3\)"):
+            command.upgrade(alembic_config, "head")
+
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE products SET quantity_on_hand = 0 WHERE sku = 'TUN-NEG'"))
+    finally:
+        command.upgrade(alembic_config, "head")
+
+    with engine.connect() as conn:
+        names = {c["name"] for c in inspect(conn).get_check_constraints("products")}
+    assert "products_quantity_on_hand_non_negative_check" in names
