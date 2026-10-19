@@ -53,14 +53,22 @@ def test_register_rejects_invalid_email(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-@pytest.mark.xfail(reason="B1: self-registration accepts any role, including ADMIN")
-def test_self_registration_cannot_create_admin(client: TestClient) -> None:
-    response = client.post(REGISTER_URL, json=registration(role="ADMIN"))
+@pytest.mark.parametrize("role", ["ADMIN", "DISTRIBUTOR"])
+def test_self_registration_cannot_create_staff_account(
+    client: TestClient, db: Session, role: str
+) -> None:
+    response = client.post(REGISTER_URL, json=registration(role=role))
 
-    if response.status_code == 201:
-        assert response.json()["user"]["role"] == "CUSTOMER"
-    else:
-        assert response.status_code in (403, 422)
+    assert response.status_code == 403
+    assert "customer accounts only" in response.json()["detail"]
+    assert db.query(User).count() == 0
+
+
+def test_self_registration_accepts_explicit_customer_role(client: TestClient) -> None:
+    response = client.post(REGISTER_URL, json=registration(role="CUSTOMER"))
+
+    assert response.status_code == 201
+    assert response.json()["user"]["role"] == "CUSTOMER"
 
 
 def test_login_returns_token_for_correct_password(
