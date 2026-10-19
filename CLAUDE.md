@@ -116,7 +116,11 @@ the same branch, add it to the backlog as fixed by this PR, and explain it under
 If your branch needs another open PR's changes, merge that PR's branch into yours,
 say so under "Interactions with open PRs", and ask for the other PR to be merged first.
 After it's squash-merged, merge `origin/main` into your branch so the diff shrinks
-back to your own changes.
+back to your own changes. Because the squash commit isn't an ancestor of your branch,
+any file both PRs changed reports an add/add conflict. First confirm that `main` holds
+exactly the other PR's content (`git diff <its last commit> origin/main` prints nothing).
+Then keep your side (`git checkout --ours <files>`), and check that the merge commit's
+tree matches your branch's tree from before the merge. Never force-push to avoid this.
 
 ### Branches and PRs
 
