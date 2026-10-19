@@ -9,6 +9,19 @@ export interface User {
   created_at: string;
 }
 
+/** Self-registration always creates a customer account. */
+export interface RegisterData {
+  email: string;
+  password: string;
+  full_name: string;
+  company_name?: string;
+}
+
+/** An admin creating an account with any role. */
+export interface NewAccountData extends RegisterData {
+  role: UserRole;
+}
+
 export interface Product {
   id: number;
   name: string;

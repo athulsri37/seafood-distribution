@@ -1,17 +1,11 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import client from "../api/client";
-import { User } from "../types";
+import { RegisterData, User } from "../types";
 
 interface AuthContextValue {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: {
-    email: string;
-    password: string;
-    full_name: string;
-    company_name?: string;
-    role: string;
-  }) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => void;
 }
 
@@ -34,13 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(res.data.access_token, res.data.user);
   };
 
-  const register = async (data: {
-    email: string;
-    password: string;
-    full_name: string;
-    company_name?: string;
-    role: string;
-  }) => {
+  const register = async (data: RegisterData) => {
     const res = await client.post("/auth/register", data);
     persist(res.data.access_token, res.data.user);
   };
