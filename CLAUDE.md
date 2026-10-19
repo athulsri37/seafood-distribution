@@ -73,6 +73,8 @@ truncates every table after each test.
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
 - `backend/` has no `.dockerignore`, so `docker build` copies local `.venv/` and `.env`
   into the image (B29).
+- Editing a product to negative stock returns a 500: the database's non-negative stock
+  constraint rejects it, but `ProductUpdate` doesn't validate it yet (B10).
 - Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
@@ -210,7 +212,17 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - Separate input and output schemas. Never return `hashed_password` or internal-only
   fields. Validate input with Pydantic (`Field(gt=0)` and so on) rather than by hand.
 - Commit once per request. Don't commit inside loops. Anything that reads then writes
-  shared data (such as stock) must be safe under concurrent requests.
+  shared data (such as stock) must be safe under concurrent requests:
+  - Change counters in SQL, never in Python: a conditional
+    `update(Product).where(..., Product.quantity_on_hand >= n).values(quantity_on_hand=Product.quantity_on_hand - n)`,
+    or `+ n` to restore. Reading the row and assigning a new value loses concurrent updates.
+  - When one request changes several rows, touch them in a fixed order (by id) so two
+    requests can't deadlock.
+  - Lock a row with `.with_for_update()` when a decision depends on its current state
+    (for example, "only restore stock if the order isn't already cancelled").
+  - Back invariants with a database constraint as well (`quantity_on_hand >= 0`).
+  - Test them with `send_simultaneously()` in `tests/test_order_concurrency.py`, which
+    fires real concurrent requests at the API.
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or
   owner, 404 not found, 409 conflict (state or stock), 422 schema validation (FastAPI's
