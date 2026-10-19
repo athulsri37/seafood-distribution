@@ -92,6 +92,32 @@ npm install
 npm run dev
 ```
 
+### Running the tests
+
+Backend tests run against a real PostgreSQL database, because order and stock rules
+depend on PostgreSQL's locking and constraints. The suite refuses to start unless
+`TEST_DATABASE_URL` is set, and it empties every table after each test, so always
+point it at a throwaway database:
+
+```bash
+docker run --rm -d --name seafood-test-db -p 5433:5432 \
+  -e POSTGRES_PASSWORD=test -e POSTGRES_DB=seafood_test postgres:16-alpine
+
+cd backend
+pip install -r requirements-dev.txt
+TEST_DATABASE_URL=postgresql://postgres:test@localhost:5433/seafood_test pytest
+# PowerShell: $env:TEST_DATABASE_URL="postgresql://postgres:test@localhost:5433/seafood_test"; pytest
+
+docker stop seafood-test-db    # --rm deletes the container and its data
+```
+
+Tests marked `xfail` describe known bugs from [`docs/backlog.md`](docs/backlog.md).
+When a fix makes one pass, pytest reports an error until the `xfail` marker is removed.
+
+The frontend has no unit tests yet. `npm run build` type-checks and builds it.
+
+GitHub Actions runs both on every pull request (`.github/workflows/ci.yml`).
+
 ### Demo accounts (after seeding)
 
 | Role        | Email                     | Password        |
