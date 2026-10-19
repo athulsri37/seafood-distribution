@@ -43,6 +43,7 @@ in `core/deps.py`, plus inline ownership checks). Frontend checks only hide UI.
 python -m venv venv && venv\Scripts\activate      # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env                              # point DATABASE_URL at your Postgres
+alembic upgrade head                              # create or update the schema
 python seed.py                                    # demo users and products
 uvicorn app.main:app --reload                     # http://localhost:8000/docs
 
@@ -70,11 +71,8 @@ truncates every table after each test.
 ### Known traps (until their backlog items are fixed)
 
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
-- There are no migrations. `Base.metadata.create_all()` creates missing tables but
-  never alters existing ones (B18). After a model change, test against a fresh database.
-- `seed.py` crashes with `expression 'Order' failed to locate a name` because it never
-  imports the Order model (B25). Until it's fixed, run
-  `python -c "import app.models.order; exec(open('seed.py').read())"` from `backend/`.
+- `backend/` has no `.dockerignore`, so `docker build` copies local `.venv/` and `.env`
+  into the image (B29).
 - Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
@@ -178,7 +176,8 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
    docker run --rm -d --name seafood-test-db -p 5433:5432 \
      -e POSTGRES_PASSWORD=test -e POSTGRES_DB=seafood_test postgres:16-alpine
    # DATABASE_URL=postgresql://postgres:test@localhost:5433/seafood_test
-   # run the API on port 8010, exercise it with curl or httpx, then:
+   # DATABASE_URL=... alembic upgrade head && python seed.py, then run the API on
+   # port 8010 and exercise it with curl or httpx. Finally:
    docker stop seafood-test-db                       # --rm deletes it
    ```
    Never point tests at the development database or the Compose `pgdata` volume.
@@ -218,6 +217,22 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   default). Error `detail` messages say what went wrong in plain words.
 - Secrets and settings come from `core/config.py` (environment). Never hard-code them.
 - Use parameterised queries only. No SQL built from strings.
+
+**Database changes**
+- Every model change ships with an Alembic migration in the same PR:
+  `alembic revision --autogenerate -m "<what changed>"`, then read and tidy the file.
+  Autogenerate misses some things (data migrations, renamed columns, enum value changes,
+  dropping enum types in `downgrade`), so write those by hand.
+- Every migration must downgrade cleanly. `tests/test_migrations.py` checks that the
+  models match the migrations, that there's a single head, and that downgrade-then-upgrade
+  works, so CI fails on drift.
+- Never edit a migration that's already on `main`. Add a new one.
+- Constraint names follow `NAMING_CONVENTION` in `app/core/database.py`. Check
+  constraints need an explicit `name=`.
+- Import `app.models` (the package) wherever the full schema is needed. It registers
+  every model, which relationships by name rely on.
+- The app never creates tables itself. Locally run `alembic upgrade head`; the backend
+  Docker image runs it before starting.
 
 **TypeScript / React**
 - Strict types, no `any` (replace existing ones in files you touch).

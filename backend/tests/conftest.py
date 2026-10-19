@@ -1,8 +1,9 @@
 """Shared fixtures for the API test suite.
 
 Tests run against a real PostgreSQL database named by TEST_DATABASE_URL. The suite
-refuses to start without it, so it can never touch a development database. Every
-table is emptied after each test.
+refuses to start without it, so it can never touch a development database. The schema
+is rebuilt from the Alembic migrations once per run, and every table is emptied after
+each test.
 """
 import itertools
 import os
@@ -21,6 +22,8 @@ if not TEST_DATABASE_URL:
 # The app builds its engine from DATABASE_URL at import time, so set it before importing.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
@@ -30,7 +33,23 @@ from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.product import Product  # noqa: E402
 from app.models.user import User, UserRole  # noqa: E402
-from tests.helpers import DEFAULT_PASSWORD  # noqa: E402
+from tests.helpers import BACKEND_DIR, DEFAULT_PASSWORD  # noqa: E402
+
+
+@pytest.fixture(scope="session")
+def alembic_config() -> Config:
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    return config
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _migrated_database(alembic_config: Config) -> None:
+    # Start from an empty schema so the run tests the migrations, not leftovers.
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    command.upgrade(alembic_config, "head")
 
 
 @pytest.fixture(autouse=True)

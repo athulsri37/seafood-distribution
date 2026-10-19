@@ -2,14 +2,13 @@
 Seeds the database with demo users and products so the app is
 immediately explorable after setup.
 
-Run with: python -m seed  (inside the backend container/venv)
+Run with: python seed.py  (inside the backend container/venv), after `alembic upgrade head`.
 """
-from app.core.database import SessionLocal, Base, engine
+from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.product import Product
 
-Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
 if not db.query(User).filter(User.email == "admin@seafoodco.com").first():

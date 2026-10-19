@@ -66,7 +66,8 @@ docker compose up --build
 - Frontend: http://localhost:5173
 - Backend API docs (Swagger): http://localhost:8000/docs
 
-After the containers are up, seed demo data:
+The backend container applies database migrations before it starts. After the
+containers are up, seed demo data:
 
 ```bash
 docker compose exec backend python seed.py
@@ -81,6 +82,7 @@ python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env            # update DATABASE_URL to point at your local Postgres
+alembic upgrade head            # create or update the database schema
 python seed.py                  # optional: creates demo users & products
 uvicorn app.main:app --reload
 ```
@@ -90,6 +92,25 @@ uvicorn app.main:app --reload
 cd frontend
 npm install
 npm run dev
+```
+
+### Database migrations
+
+The schema is managed with [Alembic](https://alembic.sqlalchemy.org/) (`backend/migrations/`).
+The app no longer creates tables on startup.
+
+```bash
+cd backend
+alembic upgrade head                                  # apply all migrations
+alembic revision --autogenerate -m "add supplier"     # after changing a model; review the file
+alembic downgrade -1                                  # undo the last migration
+```
+
+**Databases created before migrations existed** already have the right tables. Mark them
+as up to date once, instead of upgrading:
+
+```bash
+alembic stamp head
 ```
 
 ### Running the tests
