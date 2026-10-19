@@ -31,9 +31,10 @@ Layout of `backend/app/`: `core/` holds config, the DB session, security and aut
 dependencies; `models/` the SQLAlchemy tables; `schemas/` the Pydantic request and
 response models; `routers/` one file per resource.
 
-Roles are `ADMIN`, `DISTRIBUTOR` and `CUSTOMER`. The backend is the only place
-permissions are enforced (`require_roles()` in `core/deps.py`, plus inline ownership
-checks). Frontend checks only hide UI.
+Roles are `ADMIN`, `DISTRIBUTOR` and `CUSTOMER`. Sign-up creates customers only. Admins
+create staff accounts and change roles through `/api/users`, and can't remove their own
+admin role. The backend is the only place permissions are enforced (`require_roles()`
+in `core/deps.py`, plus inline ownership checks). Frontend checks only hide UI.
 
 ### Running locally
 
@@ -71,7 +72,9 @@ truncates every table after each test.
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
 - There are no migrations. `Base.metadata.create_all()` creates missing tables but
   never alters existing ones (B18). After a model change, test against a fresh database.
-- The Vite proxy target is hard-coded to `localhost:8000` (B17).
+- `seed.py` crashes with `expression 'Order' failed to locate a name` because it never
+  imports the Order model (B25). Until it's fixed, run
+  `python -c "import app.models.order; exec(open('seed.py').read())"` from `backend/`.
 - Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
@@ -165,7 +168,11 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
    ```
    Never point tests at the development database or the Compose `pgdata` volume.
 4. **Visible changes:** any change a customer, distributor or admin can see is checked
-   in a browser (Playwright) for every affected role, including error and empty states.
+   in a browser (Playwright) for every affected role, including loading, error and empty
+   states (fake them with `page.route`). Run the API on 8010 and the frontend with
+   `API_PROXY_TARGET=http://localhost:8010 npx vite --port 5183 --strictPort`. Install
+   Playwright outside the repo (for example, in a scratch folder) until the project adds
+   it as a dev dependency, and give test records unique names so the script can be re-run.
 5. **Ports:** use non-default ports (API 8010, test Postgres 5433, Vite 5183). Never stop
    a process you didn't start.
 6. **Docs:** update `README.md` and this file when you change an endpoint, a command,
