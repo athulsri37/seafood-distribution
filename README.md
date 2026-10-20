@@ -182,7 +182,9 @@ anywhere in the repository. To get new ones, run `python seed.py --reset-demo-pa
 - `POST /api/auth/register` / `POST /api/auth/login` — authentication. Sign-up creates
   customer accounts only; asking for another role returns 403.
 - `GET/POST /api/products` — inventory listing & creation
-- `PATCH /api/products/{id}` — stock/price updates
+- `PATCH /api/products/{id}` — product edits, including setting stock to a counted total
+- `POST /api/products/{id}/stock-adjustments` — add or remove units (`{"change": -10}`);
+  simultaneous adjustments all count, and a removal larger than the stock returns 409
 - `GET/POST /api/orders` — order listing & creation. Stock is checked and deducted
   atomically, so simultaneous orders can't oversell; an order that asks for more than is
   in stock returns 409 and saves nothing.
