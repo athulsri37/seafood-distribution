@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -118,5 +119,15 @@ def test_me_rejects_token_for_deleted_user(
     db.commit()
 
     response = client.get(ME_URL, headers=headers)
+
+    assert response.status_code == 401
+
+
+def test_token_signed_with_the_old_published_secret_is_rejected(client: TestClient, admin: User) -> None:
+    # Before B2, a missing JWT_SECRET_KEY fell back to a secret published in this repo,
+    # so anyone could forge an admin token like this one.
+    forged = jwt.encode({"sub": str(admin.id), "role": "ADMIN"}, "change_this_secret_in_production", algorithm="HS256")
+
+    response = client.get("/api/users", headers={"Authorization": f"Bearer {forged}"})
 
     assert response.status_code == 401
