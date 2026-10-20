@@ -70,12 +70,17 @@ credentials.
 - Frontend: http://localhost:5173
 - Backend API docs (Swagger): http://localhost:8000/docs
 
-The backend container applies database migrations before it starts. After the
-containers are up, seed demo data:
+The backend waits for PostgreSQL to be ready and applies database migrations before it
+starts. After the containers are up, seed demo data (it prints the demo logins):
 
 ```bash
 docker compose exec backend python seed.py
 ```
+
+PostgreSQL isn't published to your machine, so Compose won't clash with another database
+on port 5432. For a SQL shell, run
+`docker compose exec postgres psql -U seafood seafood_distribution`. Data is kept in the
+`pgdata` volume across restarts; `docker compose down -v` deletes it.
 
 ### Option 2: Run locally
 
