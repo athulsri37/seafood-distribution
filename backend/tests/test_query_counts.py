@@ -3,34 +3,17 @@
 Each relationship the response needs is loaded in one batch (selectinload); without that,
 every order and item adds its own queries (the N+1 problem).
 """
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 
 from fastapi.testclient import TestClient
-from sqlalchemy import event
 
-from app.core.database import engine
 from app.models.product import Product
 from app.models.user import User, UserRole
-from tests.helpers import Headers, place_order
-
-
-@contextmanager
-def count_queries() -> Iterator[list[str]]:
-    statements: list[str] = []
-
-    def record(conn, cursor, statement, parameters, context, executemany) -> None:
-        statements.append(statement)
-
-    event.listen(engine, "before_cursor_execute", record)
-    try:
-        yield statements
-    finally:
-        event.remove(engine, "before_cursor_execute", record)
+from tests.helpers import Headers, capture_queries, place_order
 
 
 def queries_for(client: TestClient, url: str, headers: dict[str, str]) -> int:
-    with count_queries() as statements:
+    with capture_queries() as statements:
         response = client.get(url, headers=headers)
     assert response.status_code == 200
     return len(statements)
