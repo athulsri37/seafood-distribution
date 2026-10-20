@@ -57,7 +57,7 @@ npm install
 npm run dev                                       # http://localhost:5173, proxies /api → :8000
 ```
 
-Demo logins are in `README.md`.
+`seed.py` prints the demo logins with random passwords; `--reset-demo-passwords` replaces them.
 
 ### Running the tests
 
@@ -152,8 +152,8 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 
 - Never write a password, token, key or connection-string password into anything that
   reaches GitHub: commits, PR titles and descriptions, comments, `docs/backlog.md` or
-  test data. This includes the demo logins: refer to them as "the demo admin login in
-  `seed.py`", not by value.
+  test data. This includes the demo logins: their passwords are random and printed by
+  `seed.py`, so refer to them as "the demo admin login", never by value.
 - Test accounts use obviously fake, test-only passwords (as in `tests/helpers.py`), never
   a real or demo password.
 - Before pushing, search the diff and the PR description for the demo passwords and
