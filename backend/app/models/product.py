@@ -1,4 +1,5 @@
 from sqlalchemy import CheckConstraint, Column, Integer, String, Numeric, DateTime, func
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -25,6 +26,9 @@ class Product(Base):
 
     order_items = relationship("OrderItem", back_populates="product")
 
-    @property
+    # A hybrid works both on a loaded product (True/False) and in a query
+    # (Product.is_low_stock becomes `quantity_on_hand <= reorder_threshold` in SQL),
+    # so the rule is written once.
+    @hybrid_property
     def is_low_stock(self) -> bool:
         return self.quantity_on_hand <= self.reorder_threshold
