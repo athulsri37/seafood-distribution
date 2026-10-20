@@ -3,7 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_roles
@@ -14,6 +14,13 @@ from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderIte
 from app.services.orders import next_statuses, transition_error
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+# Everything _serialize_order reads. Loading it up front takes one query per relationship,
+# however many orders there are, instead of one per order (the N+1 problem).
+ORDER_DETAILS = (
+    selectinload(Order.customer),
+    selectinload(Order.items).selectinload(OrderItem.product),
+)
 
 
 def _serialize_order(order: Order) -> OrderOut:
@@ -65,7 +72,7 @@ def _deduct_stock(db: Session, product_id: int, quantity: int) -> Decimal:
 
 @router.get("", response_model=List[OrderOut])
 def list_orders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = db.query(Order)
+    query = db.query(Order).options(*ORDER_DETAILS)
     if current_user.role == UserRole.CUSTOMER:
         query = query.filter(Order.customer_id == current_user.id)
     orders = query.order_by(Order.created_at.desc()).all()
@@ -149,7 +156,7 @@ def update_order_status(
 def get_order(
     order_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = db.query(Order).options(*ORDER_DETAILS).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if current_user.role == UserRole.CUSTOMER and order.customer_id != current_user.id:
