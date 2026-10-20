@@ -81,8 +81,6 @@ truncates every table after each test.
 
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
-- Pydantic models still use the v1-style `class Config`, which prints deprecation
-  warnings in test runs (B23). They're expected until that item is fixed.
 
 ## Backlog
 
@@ -243,7 +241,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   `Count` in `schemas/product.py`), `min_length=1` for required text, and
   `str_strip_whitespace=True`. For partial updates (PATCH), reject explicit `null` for
   NOT NULL columns with a `field_validator`: it only runs for fields the request sent.
-- New schemas use Pydantic v2's `model_config = ConfigDict(...)`, not `class Config` (B23).
+- Schemas use Pydantic v2's `model_config = ConfigDict(...)`, never `class Config`.
+  `pytest.ini` turns Pydantic deprecation warnings into errors, so deprecated features
+  fail the test run instead of breaking the Pydantic v3 upgrade.
 - Commit once per request. Don't commit inside loops. Anything that reads then writes
   shared data (such as stock) must be safe under concurrent requests:
   - Change counters in SQL, never in Python: a conditional
