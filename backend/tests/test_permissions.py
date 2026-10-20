@@ -23,6 +23,8 @@ def call(client: TestClient, action: str, product: Product, headers: dict[str, s
         return client.post("/api/products", json=NEW_PRODUCT, headers=headers)
     if action == "update_product":
         return client.patch(f"/api/products/{product.id}", json={"quantity_on_hand": 5}, headers=headers)
+    if action == "adjust_stock":
+        return client.post(f"/api/products/{product.id}/stock-adjustments", json={"change": 5}, headers=headers)
     if action == "delete_product":
         return client.delete(f"/api/products/{product.id}", headers=headers)
     if action == "update_order_status":
@@ -44,6 +46,7 @@ def call(client: TestClient, action: str, product: Product, headers: dict[str, s
 MATRIX = [
     ("create_product", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 201, UserRole.ADMIN: 201}),
     ("update_product", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 200, UserRole.ADMIN: 200}),
+    ("adjust_stock", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 200, UserRole.ADMIN: 200}),
     ("delete_product", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 403, UserRole.ADMIN: 204}),
     ("update_order_status", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 404, UserRole.ADMIN: 404}),
     ("dashboard", {UserRole.CUSTOMER: 403, UserRole.DISTRIBUTOR: 200, UserRole.ADMIN: 200}),
