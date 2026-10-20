@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_roles
+from app.core.pagination import BeforeIdParam, LimitParam, set_total_count
 from app.models.user import User, UserRole
 from app.schemas.user import AdminUserCreate, RoleUpdate, UserOut
 from app.services.users import EmailAlreadyRegistered, create_user
@@ -14,10 +15,17 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.get("", response_model=List[UserOut])
 def list_users(
+    response: Response,
+    limit: int = LimitParam,
+    before_id: Optional[int] = BeforeIdParam,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
 ):
-    return db.query(User).order_by(User.created_at.desc()).all()
+    query = db.query(User)
+    set_total_count(response, query)
+    if before_id is not None:
+        query = query.filter(User.id < before_id)
+    return query.order_by(User.id.desc()).limit(limit).all()
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)

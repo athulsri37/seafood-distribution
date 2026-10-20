@@ -1,5 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import client, { errorMessage } from "../api/client";
+import { usePagedList } from "../api/usePagedList";
+import LoadMore from "../components/LoadMore";
 import { useAuth } from "../context/AuthContext";
 import { NewAccountData, User, UserRole } from "../types";
 
@@ -26,8 +28,8 @@ const ACCOUNT_FIELDS: { key: Exclude<keyof NewAccountData, "role">; label: strin
 
 export default function Users() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[] | null>(null);
-  const [loadError, setLoadError] = useState("");
+  const list = usePagedList<User>("/users", "Couldn't load users. Refresh the page to try again.");
+  const users = list.items;
   const [roleError, setRoleError] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
   const [account, setAccount] = useState<NewAccountData>(EMPTY_ACCOUNT);
@@ -35,26 +37,12 @@ export default function Users() {
   const [accountNotice, setAccountNotice] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const load = async () => {
-    try {
-      const res = await client.get<User[]>("/users");
-      setUsers(res.data);
-      setLoadError("");
-    } catch (err) {
-      setLoadError(errorMessage(err, "Couldn't load users. Refresh the page to try again."));
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
   const changeRole = async (target: User, role: UserRole) => {
     setRoleError("");
     setSavingId(target.id);
     try {
-      await client.patch(`/users/${target.id}/role`, { role });
-      await load();
+      const res = await client.patch<User>(`/users/${target.id}/role`, { role });
+      list.replace(res.data);
     } catch (err) {
       setRoleError(errorMessage(err, `Couldn't change ${target.full_name}'s role. Try again.`));
     } finally {
@@ -71,7 +59,7 @@ export default function Users() {
       const res = await client.post<User>("/users", account);
       setAccount(EMPTY_ACCOUNT);
       setAccountNotice(`Created ${res.data.full_name} (${res.data.role.toLowerCase()}).`);
-      await load();
+      list.prepend(res.data);
     } catch (err) {
       setAccountError(errorMessage(err, "Couldn't create the account. Check the details and try again."));
     } finally {
@@ -136,7 +124,7 @@ export default function Users() {
       </form>
 
       {roleError && <p className="text-red-600 text-sm mb-3">{roleError}</p>}
-      {loadError && <p className="text-red-600 text-sm mb-3">{loadError}</p>}
+      {list.error && <p className="text-red-600 text-sm mb-3">{list.error}</p>}
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -149,7 +137,7 @@ export default function Users() {
             </tr>
           </thead>
           <tbody>
-            {users === null && !loadError && (
+            {users === null && !list.error && (
               <tr><td colSpan={4} className="px-4 py-6 text-slate-500">Loading users…</td></tr>
             )}
             {users?.length === 0 && (
@@ -182,6 +170,14 @@ export default function Users() {
             })}
           </tbody>
         </table>
+        <LoadMore
+          shown={users?.length ?? 0}
+          total={list.total}
+          hasMore={list.hasMore}
+          loading={list.loadingMore}
+          onLoadMore={list.loadMore}
+          noun="users"
+        />
       </div>
     </div>
   );
