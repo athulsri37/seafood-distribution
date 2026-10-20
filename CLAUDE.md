@@ -239,6 +239,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   models match the migrations, that there's a single head, and that downgrade-then-upgrade
   works, so CI fails on drift.
 - Never edit a migration that's already on `main`. Add a new one.
+- Instructions that say `head` change meaning whenever a migration is added. Docs for
+  adopting an old database must name the baseline revision (`alembic stamp 9974bc68bdcd`),
+  never `stamp head`, which would skip every later migration.
 - Constraint names follow `NAMING_CONVENTION` in `app/core/database.py`. Check
   constraints need an explicit `name=`.
 - Import `app.models` (the package) wherever the full schema is needed. It registers

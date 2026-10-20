@@ -77,11 +77,14 @@ docker compose exec backend python seed.py
 
 **Backend**
 ```bash
+# No PostgreSQL yet? Run one in Docker (pick any free port and your own password):
+docker run -d --name seafood-dev-db --restart unless-stopped -p 5434:5432   -v seafood-dev-pgdata:/var/lib/postgresql/data   -e POSTGRES_USER=seafood -e POSTGRES_PASSWORD=<choose-a-password>   -e POSTGRES_DB=seafood_distribution postgres:16-alpine
+
 cd backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env            # update DATABASE_URL to point at your local Postgres
+cp .env.example .env            # set DATABASE_URL (and a random JWT_SECRET_KEY) for your Postgres
 alembic upgrade head            # create or update the database schema
 python seed.py                  # optional: creates demo users & products
 uvicorn app.main:app --reload
@@ -106,12 +109,16 @@ alembic revision --autogenerate -m "add supplier"     # after changing a model; 
 alembic downgrade -1                                  # undo the last migration
 ```
 
-**Databases created before migrations existed** already have the right tables. Mark them
-as up to date once, instead of upgrading:
+**Databases created before migrations existed** already have the tables from the first
+migration. Mark them as being at that migration, then apply the rest:
 
 ```bash
-alembic stamp head
+alembic stamp 9974bc68bdcd    # the initial schema, which create_all() already built
+alembic upgrade head          # applies every later migration
 ```
+
+Don't use `alembic stamp head` for this: it would mark later migrations as applied
+without running them.
 
 ### Running the tests
 
