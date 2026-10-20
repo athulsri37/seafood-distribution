@@ -12,7 +12,7 @@ class Product(Base):
         CheckConstraint("quantity_on_hand >= 0", name="quantity_on_hand_non_negative"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     species = Column(String, nullable=False)
     sku = Column(String, unique=True, nullable=False)

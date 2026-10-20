@@ -296,6 +296,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   never `stamp head`, which would skip every later migration.
 - Constraint names follow `NAMING_CONVENTION` in `app/core/database.py`. Check
   constraints need an explicit `name=`.
+- Don't put `index=True` on a primary key or on a `unique=True` column that already gets
+  its own index: the duplicate index only slows writes. `tests/test_migrations.py` fails if an
+  index repeats a primary key.
 - Import `app.models` (the package) wherever the full schema is needed. It registers
   every model, which relationships by name rely on.
 - The app never creates tables itself. Locally run `alembic upgrade head`; the backend
