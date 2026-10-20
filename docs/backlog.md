@@ -24,7 +24,7 @@ Priority items are the ones the resume claims depend on. Do them first.
 | B11 | Correctness | Deleting a product that has been ordered fails with a 500 (foreign key). | Soft delete with an `is_active` flag. | Open |
 | B12 | Correctness | Order totals are added up as `float`. | Use `Decimal` throughout. | Open |
 | B13 | Correctness | Report revenue includes cancelled orders. | Exclude `CANCELLED` from revenue. | Fixed (#14): revenue, the order count and top products leave out cancelled orders (one `NOT_CANCELLED` filter); the status breakdown keeps them; dashboard labels say "excl. cancelled". |
-| B14 | Performance | N+1 queries when listing orders. | `selectinload` / `joinedload`. | Open |
+| B14 | Performance | N+1 queries when listing orders. | `selectinload` / `joinedload`. | Fixed (#17): listing and fetching orders load customers, items and products with `selectinload`; listing takes 5 queries for any number of orders (was 7 for 1 and 45 for 20), pinned by query-count tests. |
 | B15 | Performance | No pagination on orders, products or users. | Limit/offset or cursor pagination. | Open |
 | B16 | Performance | Low-stock filtering and counting run in Python. | Do it in SQL. | Open |
 | B17 | Engineering | `docker compose up` is broken: the backend publishes 4000 but listens on 8000, and the Vite proxy targets `localhost:8000` inside the container. | Fix the port, and make the proxy target configurable (`API_PROXY_TARGET`). | Open. `API_PROXY_TARGET` was added in #3 for browser testing; the Compose port and the in-container proxy target are still wrong. |

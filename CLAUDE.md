@@ -242,6 +242,10 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   - Test them with `send_simultaneously()` in `tests/helpers.py`, which fires real
     concurrent requests at the API (examples in `tests/test_order_concurrency.py`).
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.
+- An endpoint that returns objects with relationships loads them up front with
+  `selectinload` (see `ORDER_DETAILS` in `routers/orders.py`), so the number of queries
+  doesn't grow with the number of rows. `tests/test_query_counts.py` pins these counts;
+  add a case there for any new list endpoint.
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or
   owner, 404 not found, 409 conflict (state or stock), 422 schema validation (FastAPI's
   default). Error `detail` messages say what went wrong in plain words.
