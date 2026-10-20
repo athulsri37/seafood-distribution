@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import BigInteger, cast, update
+from sqlalchemy import BigInteger, cast, func, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -30,7 +30,9 @@ def list_products(
     if low_stock_only:
         query = query.filter(Product.is_low_stock)
     set_total_count(response, query)
-    return query.limit(limit).all()
+    # Alphabetical (ignoring case), then by id, so the list doesn't reshuffle when a
+    # product's stock or price changes.
+    return query.order_by(func.lower(Product.name), Product.id).limit(limit).all()
 
 
 @router.post("", response_model=ProductOut, status_code=201)
