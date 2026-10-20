@@ -70,12 +70,17 @@ credentials.
 - Frontend: http://localhost:5173
 - Backend API docs (Swagger): http://localhost:8000/docs
 
-The backend container applies database migrations before it starts. After the
-containers are up, seed demo data:
+The backend waits for PostgreSQL to be ready and applies database migrations before it
+starts. After the containers are up, seed demo data (it prints the demo logins):
 
 ```bash
 docker compose exec backend python seed.py
 ```
+
+PostgreSQL isn't published to your machine, so Compose won't clash with another database
+on port 5432. For a SQL shell, run
+`docker compose exec postgres psql -U seafood seafood_distribution`. Data is kept in the
+`pgdata` volume across restarts; `docker compose down -v` deletes it.
 
 ### Option 2: Run locally
 
@@ -177,7 +182,9 @@ anywhere in the repository. To get new ones, run `python seed.py --reset-demo-pa
 - `POST /api/auth/register` / `POST /api/auth/login` — authentication. Sign-up creates
   customer accounts only; asking for another role returns 403.
 - `GET/POST /api/products` — inventory listing & creation
-- `PATCH /api/products/{id}` — stock/price updates
+- `PATCH /api/products/{id}` — product edits, including setting stock to a counted total
+- `POST /api/products/{id}/stock-adjustments` — add or remove units (`{"change": -10}`);
+  simultaneous adjustments all count, and a removal larger than the stock returns 409
 - `GET/POST /api/orders` — order listing & creation. Stock is checked and deducted
   atomically, so simultaneous orders can't oversell; an order that asks for more than is
   in stock returns 409 and saves nothing.
