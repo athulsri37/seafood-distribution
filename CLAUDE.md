@@ -304,7 +304,11 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 **TypeScript / React**
 - Strict types, no `any` (replace existing ones in files you touch).
 - `src/types/index.ts` mirrors the backend schemas. Change both together.
-- All HTTP goes through `src/api/client.ts`.
+- All HTTP goes through `src/api/client.ts`. Its interceptor treats a 401 as an expired
+  session and sends the user to `/login`, except for the login request itself (a wrong
+  password). Exempt any other request whose 401 the page shows to the user.
+- Show the API's error with `errorMessage(err, fallback)` rather than a fixed message, so
+  a server or network failure isn't reported as the user's mistake.
 - Derive state instead of syncing it with effects. Show loading, error and empty states.
 
 **Tests**

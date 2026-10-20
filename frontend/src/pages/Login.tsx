@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { errorMessage } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
@@ -15,8 +16,8 @@ export default function Login() {
     try {
       await login(email, password);
       navigate("/orders");
-    } catch {
-      setError("Invalid email or password");
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't log in. Check your connection and try again."));
     }
   };
 
