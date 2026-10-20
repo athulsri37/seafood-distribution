@@ -206,7 +206,6 @@ def test_status_moves_forward_through_pipeline(
         assert response.json()["status"] == status
 
 
-@pytest.mark.xfail(reason="B8: a cancelled order can be reopened without taking stock off again")
 def test_cancelled_order_cannot_be_reopened(
     client: TestClient,
     customer: User,
@@ -221,3 +220,4 @@ def test_cancelled_order_cannot_be_reopened(
     response = client.patch(url, json={"status": "PENDING"}, headers=auth_headers(distributor))
 
     assert response.status_code == 409
+    assert "final" in response.json()["detail"]

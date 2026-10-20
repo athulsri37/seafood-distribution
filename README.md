@@ -163,7 +163,10 @@ GitHub Actions runs both on every pull request (`.github/workflows/ci.yml`).
 - `GET/POST /api/orders` — order listing & creation. Stock is checked and deducted
   atomically, so simultaneous orders can't oversell; an order that asks for more than is
   in stock returns 409 and saves nothing.
-- `PATCH /api/orders/{id}/status` — order status transitions
+- `PATCH /api/orders/{id}/status` — order status transitions (distributors and admins).
+  Orders move one step at a time: PENDING → CONFIRMED → IN_TRANSIT → DELIVERED, and can
+  be CANCELLED (restoring stock) only before shipping. DELIVERED and CANCELLED are final.
+  Any other change returns 409; each order lists its allowed `next_statuses`.
 - `GET /api/reports/dashboard` — aggregated sales & inventory metrics
 - `GET/POST /api/users` — list users and create an account with any role (admin only)
 - `PATCH /api/users/{id}/role` — change a user's role (admin only; admins can't remove

@@ -36,6 +36,11 @@ create staff accounts and change roles through `/api/users`, and can't remove th
 admin role. The backend is the only place permissions are enforced (`require_roles()`
 in `core/deps.py`, plus inline ownership checks). Frontend checks only hide UI.
 
+Order statuses follow `ALLOWED_TRANSITIONS` in `app/services/orders.py`: one step at a time,
+cancel (which restores stock) only before IN_TRANSIT, and DELIVERED and CANCELLED are final.
+The API returns each order's `next_statuses`, and the frontend offers only those. Change
+the rules in that one map, never in the router or the UI.
+
 ### Running locally
 
 ```bash
@@ -221,8 +226,8 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   - Lock a row with `.with_for_update()` when a decision depends on its current state
     (for example, "only restore stock if the order isn't already cancelled").
   - Back invariants with a database constraint as well (`quantity_on_hand >= 0`).
-  - Test them with `send_simultaneously()` in `tests/test_order_concurrency.py`, which
-    fires real concurrent requests at the API.
+  - Test them with `send_simultaneously()` in `tests/helpers.py`, which fires real
+    concurrent requests at the API (examples in `tests/test_order_concurrency.py`).
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or
   owner, 404 not found, 409 conflict (state or stock), 422 schema validation (FastAPI's

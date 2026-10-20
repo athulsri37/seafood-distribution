@@ -54,6 +54,8 @@ export interface OrderItem {
 export interface Order {
   id: number;
   status: OrderStatus;
+  /** Statuses the order may move to next; empty once it's delivered or cancelled. */
+  next_statuses: OrderStatus[];
   total_amount: number;
   customer: User;
   items: OrderItem[];
