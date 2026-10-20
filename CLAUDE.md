@@ -79,7 +79,6 @@ truncates every table after each test.
 
 ### Known traps (until their backlog items are fixed)
 
-- `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
 - Pydantic models still use the v1-style `class Config`, which prints deprecation
@@ -201,12 +200,17 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
    `API_PROXY_TARGET=http://localhost:8010 npx vite --port 5183 --strictPort`. Install
    Playwright outside the repo (for example, in a scratch folder) until the project adds
    it as a dev dependency, and give test records unique names so the script can be re-run.
-5. **Ports:** use non-default ports (API 8010, test Postgres 5433, Vite 5183). Never stop
+5. **Docker changes:** if you touch a Dockerfile, a `.dockerignore` or
+   `docker-compose.yml`, bring the stack up with a throwaway project name and `.env`
+   (`docker compose -p seafood-check up -d --build`), check the API health, the frontend
+   and `/api` through the frontend, then remove it all (`down -v --rmi local`) and delete
+   that `.env`.
+6. **Ports:** use non-default ports (API 8010, test Postgres 5433, Vite 5183). Never stop
    a process you didn't start.
-6. **Docs:** update `README.md` and this file when you change an endpoint, a command,
+7. **Docs:** update `README.md` and this file when you change an endpoint, a command,
    an environment variable or a convention.
-7. **Backlog:** mark the item fixed in `docs/backlog.md` with a one-line note.
-8. **PR write-up:** the Testing section lists what ran, with results. "Not tested" says
+8. **Backlog:** mark the item fixed in `docs/backlog.md` with a one-line note.
+9. **PR write-up:** the Testing section lists what ran, with results. "Not tested" says
    what wasn't tested and why.
 
 ### Code standards
@@ -239,6 +243,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   - Lock a row with `.with_for_update()` when a decision depends on its current state
     (for example, "only restore stock if the order isn't already cancelled").
   - Back invariants with a database constraint as well (`quantity_on_hand >= 0`).
+  - Clients send changes, not new totals: stock goes up or down through
+    `POST /api/products/{id}/stock-adjustments`. `PATCH quantity_on_hand` is only for
+    setting a counted total, which deliberately replaces the value.
   - Test them with `send_simultaneously()` in `tests/helpers.py`, which fires real
     concurrent requests at the API (examples in `tests/test_order_concurrency.py`).
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.

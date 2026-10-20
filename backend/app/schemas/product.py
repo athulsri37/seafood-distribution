@@ -55,6 +55,19 @@ class ProductUpdate(BaseModel):
         return value
 
 
+class StockAdjustment(BaseModel):
+    """A change to stock on hand: positive adds units, negative removes them."""
+
+    change: int = Field(ge=-MAX_COUNT, le=MAX_COUNT)
+
+    @field_validator("change")
+    @classmethod
+    def _not_zero(cls, value: int) -> int:
+        if value == 0:
+            raise ValueError("can't be 0")
+        return value
+
+
 class ProductOut(BaseModel):
     id: int
     name: str

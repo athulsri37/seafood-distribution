@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import client from "../api/client";
+import client, { errorMessage } from "../api/client";
 import { Product } from "../types";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +7,8 @@ export default function Inventory() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [error, setError] = useState("");
+  const [savingId, setSavingId] = useState<number | null>(null);
   const canManage = user?.role === "ADMIN" || user?.role === "DISTRIBUTOR";
 
   const load = async () => {
@@ -19,12 +21,18 @@ export default function Inventory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lowStockOnly]);
 
-  const adjustStock = async (id: number, delta: number) => {
-    const product = products.find((p) => p.id === id);
-    if (!product) return;
-    const newQty = Math.max(0, product.quantity_on_hand + delta);
-    await client.patch(`/products/${id}`, { quantity_on_hand: newQty });
-    load();
+  // Send the change, not a new total, so two people adjusting at once both count.
+  const adjustStock = async (id: number, change: number) => {
+    setError("");
+    setSavingId(id);
+    try {
+      await client.post(`/products/${id}/stock-adjustments`, { change });
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't update the stock. Try again."));
+    } finally {
+      setSavingId(null);
+      load();
+    }
   };
 
   return (
@@ -40,6 +48,12 @@ export default function Inventory() {
           Low stock only
         </label>
       </div>
+
+      {error && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -76,13 +90,18 @@ export default function Inventory() {
                   <td className="px-4 py-2 flex gap-2">
                     <button
                       onClick={() => adjustStock(p.id, -10)}
-                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs"
+                      disabled={savingId === p.id || p.quantity_on_hand < 10}
+                      aria-label={`Remove 10 ${p.unit} of ${p.name}`}
+                      title={p.quantity_on_hand < 10 ? `Only ${p.quantity_on_hand} ${p.unit} in stock` : undefined}
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded text-xs"
                     >
                       -10
                     </button>
                     <button
                       onClick={() => adjustStock(p.id, 10)}
-                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs"
+                      disabled={savingId === p.id}
+                      aria-label={`Add 10 ${p.unit} of ${p.name}`}
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded text-xs"
                     >
                       +10
                     </button>

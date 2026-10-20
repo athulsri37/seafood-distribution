@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import BigInteger, cast, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,7 +9,7 @@ from app.core.deps import require_roles, get_current_user
 from app.core.pagination import set_total_count
 from app.models.product import Product
 from app.models.user import UserRole, User
-from app.schemas.product import ProductCreate, ProductUpdate, ProductOut
+from app.schemas.product import MAX_COUNT, ProductCreate, ProductOut, ProductUpdate, StockAdjustment
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -60,6 +61,42 @@ def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.post("/{product_id}/stock-adjustments", response_model=ProductOut)
+def adjust_stock(
+    product_id: int,
+    payload: StockAdjustment,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)),
+):
+    """Add or remove units. Simultaneous adjustments add up instead of overwriting each other."""
+    # Apply the change in SQL, as one statement with its own range check. The check is
+    # done in BIGINT so a huge change can't overflow the INTEGER column mid-comparison.
+    new_quantity = cast(Product.quantity_on_hand, BigInteger) + payload.change
+    adjusted = db.execute(
+        update(Product)
+        .where(Product.id == product_id, new_quantity >= 0, new_quantity <= MAX_COUNT)
+        .values(quantity_on_hand=Product.quantity_on_hand + payload.change)
+        .returning(Product.id)
+    ).scalar_one_or_none()
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if adjusted is None:
+        if payload.change < 0:
+            detail = (
+                f"Can't remove {-payload.change} {product.unit}: only {product.quantity_on_hand} "
+                f"{product.unit} of {product.name} in stock."
+            )
+        else:
+            detail = f"Can't add {payload.change} {product.unit}: stock would exceed {MAX_COUNT}."
+        raise HTTPException(status_code=409, detail=detail)
+
     db.commit()
     db.refresh(product)
     return product
