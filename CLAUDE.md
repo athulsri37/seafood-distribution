@@ -76,8 +76,6 @@ truncates every table after each test.
 ### Known traps (until their backlog items are fixed)
 
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
-- `backend/` has no `.dockerignore`, so `docker build` copies local `.venv/` and `.env`
-  into the image (B29).
 - Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
@@ -156,6 +154,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   `seed.py`, so refer to them as "the demo admin login", never by value.
 - Test accounts use obviously fake, test-only passwords (as in `tests/helpers.py`), never
   a real or demo password.
+- `.env` files are kept out of git (`.gitignore`) and out of Docker images
+  (`backend/.dockerignore`, `frontend/.dockerignore`). When you add a file that holds
+  secrets or host-specific build output, add it to all three.
 - Before pushing, search the diff and the PR description for the demo passwords and
   for strings like `password=`, `secret` and `token`.
 
