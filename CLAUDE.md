@@ -242,6 +242,8 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   - Test them with `send_simultaneously()` in `tests/helpers.py`, which fires real
     concurrent requests at the API (examples in `tests/test_order_concurrency.py`).
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.
+- Filter and count in SQL, never by loading rows into Python. A rule needed both on
+  objects and in queries is a `hybrid_property` (see `Product.is_low_stock`).
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or
   owner, 404 not found, 409 conflict (state or stock), 422 schema validation (FastAPI's
   default). Error `detail` messages say what went wrong in plain words.
@@ -286,7 +288,8 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - Cover the happy path, permission failures and edge cases for every changed endpoint.
 - Fixtures live in `tests/conftest.py` (`client`, `db`, `make_user`, `make_product`,
   `auth_headers`, and `admin` / `distributor` / `customer`). Plain helpers and shared
-  types live in `tests/helpers.py`. Never import from `conftest.py`.
+  types live in `tests/helpers.py`, including `capture_queries()` for asserting what SQL a
+  request runs. Never import from `conftest.py`.
 - A known bug that isn't being fixed yet can get a test marked
   `@pytest.mark.xfail(reason="B<n>: <what's wrong>")`. `xfail_strict` is on, so the
   run fails as soon as a fix makes it pass, and the fix's PR has to remove the marker.
