@@ -1,4 +1,5 @@
-version: "3.9"
+# Runs the whole app: PostgreSQL, the API (which applies migrations on start) and the
+# frontend dev server. Needs a .env next to this file; see .env.example.
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,26 +7,35 @@ services:
       POSTGRES_USER: seafood
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
       POSTGRES_DB: seafood_distribution
-    ports:
-      - "5432:5432"
+    # Not published to the host: only the backend needs it, over the compose network.
+    # For a SQL shell: docker compose exec postgres psql -U seafood seafood_distribution
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seafood -d seafood_distribution"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
   backend:
     build: ./backend
     ports:
-      - "4000:4000"
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql://seafood:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}@postgres:5432/seafood_distribution
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env (see .env.example)}
-      PORT: 4000
     depends_on:
-      - postgres
+      # The backend runs migrations on start, so the database must accept connections first.
+      postgres:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
     ports:
       - "5173:5173"
+    environment:
+      # Inside compose the API is the "backend" service, not localhost.
+      API_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
 
