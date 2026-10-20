@@ -239,6 +239,10 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - Secrets and settings come from `core/config.py` (environment). Never hard-code them, and
   never give a credential a default value: the app must refuse to start without it.
   `tests/conftest.py` sets test-only values before importing the app.
+- `create_app()` in `app/main.py` builds the app from `settings`. To test behaviour that
+  depends on a setting (for example CORS), monkeypatch `settings` and call `create_app()`.
+- Cross-origin access is off unless `CORS_ORIGINS` lists origins. Never allow `*` or
+  credentials: logins use the Authorization header, not cookies.
 - Use parameterised queries only. No SQL built from strings.
 
 **Database changes**
