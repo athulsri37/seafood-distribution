@@ -46,6 +46,20 @@ def test_downgrade_to_base_and_upgrade_again(alembic_config: Config) -> None:
         assert set(inspect(conn).get_table_names()) >= {"users", "products", "orders", "order_items"}
 
 
+def test_no_index_repeats_a_primary_key() -> None:
+    """A primary key is already indexed; a second index on the same columns only slows writes."""
+    with engine.connect() as conn:
+        inspector = inspect(conn)
+        duplicates = [
+            f"{table}.{index['name']}"
+            for table in inspector.get_table_names()
+            for index in inspector.get_indexes(table)
+            if index["column_names"] == inspector.get_pk_constraint(table)["constrained_columns"]
+        ]
+
+    assert duplicates == []
+
+
 def test_database_rejects_negative_stock(db: Session, make_product: Callable[..., Product]) -> None:
     product = make_product(quantity_on_hand=1)
 
