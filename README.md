@@ -113,6 +113,10 @@ The backend won't start without these, and it lists any that are missing:
 Set them in `backend/.env` (git-ignored) or as environment variables. The old example
 secret that used to be in this repo is refused.
 
+Optional: `CORS_ORIGINS`, a comma-separated list of origins allowed to call the API from
+another site (for example `https://app.example.com`). It's empty by default, because the
+frontend reaches the API through its own `/api` proxy. `*` is refused.
+
 ### Database migrations
 
 The schema is managed with [Alembic](https://alembic.sqlalchemy.org/) (`backend/migrations/`).
