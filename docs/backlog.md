@@ -23,7 +23,7 @@ Priority items are the ones the resume claims depend on. Do them first.
 | B10 | Correctness | `ProductUpdate` has no validation, so negative prices or stock are accepted. | Add `gt=0` / `ge=0` rules. | Fixed (#9): create and edit reject negative or zero prices, negative counts, values beyond the column limits, prices with more than 2 decimals, blank text and explicit nulls for required fields, all with a 422 naming the field. Text is trimmed. |
 | B11 | Correctness | Deleting a product that has been ordered fails with a 500 (foreign key). | Soft delete with an `is_active` flag. | Open |
 | B12 | Correctness | Order totals are added up as `float`. | Use `Decimal` throughout. | Open |
-| B13 | Correctness | Report revenue includes cancelled orders. | Exclude `CANCELLED` from revenue. | Open |
+| B13 | Correctness | Report revenue includes cancelled orders. | Exclude `CANCELLED` from revenue. | Fixed (#14): revenue, the order count and top products leave out cancelled orders (one `NOT_CANCELLED` filter); the status breakdown keeps them; dashboard labels say "excl. cancelled". |
 | B14 | Performance | N+1 queries when listing orders. | `selectinload` / `joinedload`. | Open |
 | B15 | Performance | No pagination on orders, products or users. | Limit/offset or cursor pagination. | Open |
 | B16 | Performance | Low-stock filtering and counting run in Python. | Do it in SQL. | Open |
@@ -43,3 +43,5 @@ Priority items are the ones the resume claims depend on. Do them first.
 | B30 | Correctness | `GET /api/products` has no `ORDER BY`, so products come back in whatever order PostgreSQL stores them. After a stock change the updated row moves, and the order form and inventory reshuffle. | Order by name (or id) in the query. | Open |
 | B31 | Feature | Customers can't cancel their own orders; only distributors and admins can change a status. Agreed out of scope for B8. | Let a customer cancel their own order while it's PENDING (not after confirmation), using the same transition rules and stock restore. | Open |
 | B32 | Feature | Once an order is IN_TRANSIT or DELIVERED it can't be cancelled (by design, B8), so a failed delivery or a return has no process, and stock can't be put back. | Add a returns flow that records what came back and whether it can be restocked (seafood may not be resellable). | Open |
+| B33 | Correctness | Top products groups by `Product.name`, so two products with the same name (names aren't unique, SKUs are) would be merged into one bar (`app/routers/reports.py`). | Group by `Product.id` and select the name. | Open |
+| B34 | Correctness | The Top Products chart's units axis shows fractional ticks (0.5, 1.5) for whole-number unit counts (`Reports.tsx`). | Set `allowDecimals={false}` on the Y axis. | Open |

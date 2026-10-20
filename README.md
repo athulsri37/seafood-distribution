@@ -185,7 +185,8 @@ anywhere in the repository. To get new ones, run `python seed.py --reset-demo-pa
   Orders move one step at a time: PENDING → CONFIRMED → IN_TRANSIT → DELIVERED, and can
   be CANCELLED (restoring stock) only before shipping. DELIVERED and CANCELLED are final.
   Any other change returns 409; each order lists its allowed `next_statuses`.
-- `GET /api/reports/dashboard` — aggregated sales & inventory metrics
+- `GET /api/reports/dashboard` — aggregated sales & inventory metrics. Revenue, the order
+  count and top products leave out cancelled orders; the status breakdown includes them.
 - `GET/POST /api/users` — list users and create an account with any role (admin only)
 - `PATCH /api/users/{id}/role` — change a user's role (admin only; admins can't remove
   their own admin role)
