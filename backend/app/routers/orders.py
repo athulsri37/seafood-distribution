@@ -1,6 +1,8 @@
+from decimal import Decimal
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -34,6 +36,31 @@ def _serialize_order(order: Order) -> OrderOut:
     )
 
 
+def _deduct_stock(db: Session, product_id: int, quantity: int) -> Decimal:
+    """Take `quantity` off the product's stock and return its current unit price.
+
+    The stock check and the deduction are one UPDATE, so a concurrent order can't take
+    the same units between them. Raises 404 for an unknown product and 409 when there
+    isn't enough stock.
+    """
+    price = db.execute(
+        update(Product)
+        .where(Product.id == product_id, Product.quantity_on_hand >= quantity)
+        .values(quantity_on_hand=Product.quantity_on_hand - quantity)
+        .returning(Product.price_per_unit)
+    ).scalar_one_or_none()
+    if price is not None:
+        return price
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+    raise HTTPException(
+        status_code=409,
+        detail=f"Insufficient stock for {product.name} (available: {product.quantity_on_hand})",
+    )
+
+
 @router.get("", response_model=List[OrderOut])
 def list_orders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     query = db.query(Order)
@@ -56,24 +83,21 @@ def create_order(
     db.add(order)
     db.flush()
 
+    # Deduct stock in product-id order so two orders sharing products always lock their
+    # rows in the same order and can't deadlock.
+    prices: dict[int, Decimal] = {}
+    for item in sorted(payload.items, key=lambda i: i.product_id):
+        prices[item.product_id] = _deduct_stock(db, item.product_id, item.quantity)
+
     total = 0.0
     for item in payload.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
-        if product.quantity_on_hand < item.quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Insufficient stock for {product.name} (available: {product.quantity_on_hand})",
-            )
-        product.quantity_on_hand -= item.quantity
-        unit_price = float(product.price_per_unit)
+        unit_price = float(prices[item.product_id])
         total += unit_price * item.quantity
 
         db.add(
             OrderItem(
                 order_id=order.id,
-                product_id=product.id,
+                product_id=item.product_id,
                 quantity=item.quantity,
                 unit_price=unit_price,
             )
@@ -92,13 +116,20 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)),
 ):
-    order = db.query(Order).filter(Order.id == order_id).first()
+    # Lock the order so simultaneous status changes run one at a time; otherwise two
+    # cancellations could both see it as not cancelled and restore the stock twice.
+    order = db.query(Order).filter(Order.id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
     if payload.status == OrderStatus.CANCELLED and order.status != OrderStatus.CANCELLED:
-        for item in order.items:
-            item.product.quantity_on_hand += item.quantity
+        for item in sorted(order.items, key=lambda i: i.product_id):
+            # Add in SQL, not in Python, so stock deducted by concurrent orders isn't overwritten.
+            db.execute(
+                update(Product)
+                .where(Product.id == item.product_id)
+                .values(quantity_on_hand=Product.quantity_on_hand + item.quantity)
+            )
 
     order.status = payload.status
     db.commit()

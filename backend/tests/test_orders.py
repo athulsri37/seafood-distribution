@@ -67,11 +67,44 @@ def test_order_with_insufficient_stock_saves_nothing(
     # The first line succeeds before the second fails, so this checks the rollback.
     response = place_order(client, auth_headers(customer), (in_stock, 10), (scarce, 5))
 
-    assert response.status_code == 400
+    assert response.status_code == 409
+    assert "Insufficient stock" in response.json()["detail"]
     assert stock_of(db, in_stock) == 100
     assert stock_of(db, scarce) == 3
     assert db.query(Order).count() == 0
 
+
+
+def test_order_can_take_the_last_unit_in_stock(
+    client: TestClient,
+    db: Session,
+    customer: User,
+    make_product: Callable[..., Product],
+    auth_headers: Headers,
+) -> None:
+    lobster = make_product(quantity_on_hand=3)
+
+    response = place_order(client, auth_headers(customer), (lobster, 3))
+
+    assert response.status_code == 201
+    assert stock_of(db, lobster) == 0
+
+
+def test_order_lines_keep_request_order_and_prices(
+    client: TestClient,
+    customer: User,
+    make_product: Callable[..., Product],
+    auth_headers: Headers,
+) -> None:
+    first, second = make_product(price_per_unit="5.00"), make_product(price_per_unit="7.50")
+
+    # Stock is deducted in product-id order, but the order lists items as requested.
+    response = place_order(client, auth_headers(customer), (second, 2), (first, 1))
+
+    assert response.status_code == 201
+    items = response.json()["items"]
+    assert [(i["product_id"], i["unit_price"]) for i in items] == [(second.id, 7.5), (first.id, 5.0)]
+    assert response.json()["total_amount"] == pytest.approx(20.0)
 
 def test_order_for_unknown_product_returns_404(
     client: TestClient, db: Session, customer: User, auth_headers: Headers

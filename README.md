@@ -153,7 +153,9 @@ GitHub Actions runs both on every pull request (`.github/workflows/ci.yml`).
   customer accounts only; asking for another role returns 403.
 - `GET/POST /api/products` — inventory listing & creation
 - `PATCH /api/products/{id}` — stock/price updates
-- `GET/POST /api/orders` — order listing & creation (stock-aware)
+- `GET/POST /api/orders` — order listing & creation. Stock is checked and deducted
+  atomically, so simultaneous orders can't oversell; an order that asks for more than is
+  in stock returns 409 and saves nothing.
 - `PATCH /api/orders/{id}/status` — order status transitions
 - `GET /api/reports/dashboard` — aggregated sales & inventory metrics
 - `GET/POST /api/users` — list users and create an account with any role (admin only)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import client from "../api/client";
+import client, { errorMessage } from "../api/client";
 import { Order, OrderStatus, Product } from "../types";
 import { useAuth } from "../context/AuthContext";
 
@@ -17,6 +17,8 @@ export default function Orders() {
   const [products, setProducts] = useState<Product[]>([]);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [cart, setCart] = useState<Record<number, number>>({});
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const canManage = user?.role === "ADMIN" || user?.role === "DISTRIBUTOR";
 
   const loadOrders = async () => {
@@ -39,15 +41,29 @@ export default function Orders() {
       .filter(([, qty]) => qty > 0)
       .map(([product_id, quantity]) => ({ product_id: Number(product_id), quantity }));
     if (items.length === 0) return;
-    await client.post("/orders", { items });
-    setCart({});
-    setShowNewOrder(false);
-    loadOrders();
-    loadProducts();
+    setError("");
+    setSubmitting(true);
+    try {
+      await client.post("/orders", { items });
+      setCart({});
+      setShowNewOrder(false);
+      loadOrders();
+    } catch (err) {
+      // Usually another customer bought the last units first; the refreshed stock shows what's left.
+      setError(errorMessage(err, "Couldn't place the order. Try again."));
+    } finally {
+      setSubmitting(false);
+      loadProducts();
+    }
   };
 
   const updateStatus = async (orderId: number, status: OrderStatus) => {
-    await client.patch(`/orders/${orderId}/status`, { status });
+    setError("");
+    try {
+      await client.patch(`/orders/${orderId}/status`, { status });
+    } catch (err) {
+      setError(errorMessage(err, `Couldn't update order #${orderId}. Try again.`));
+    }
     loadOrders();
     loadProducts();
   };
@@ -64,6 +80,12 @@ export default function Orders() {
         </button>
       </div>
 
+      {error && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       {showNewOrder && (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
           <h2 className="font-semibold text-slate-700 mb-3">Create Order</h2>
@@ -76,6 +98,7 @@ export default function Orders() {
                 </div>
                 <input
                   type="number"
+                  aria-label={`Quantity of ${p.name}`}
                   min={0}
                   max={p.quantity_on_hand}
                   value={cart[p.id] || ""}
@@ -89,9 +112,10 @@ export default function Orders() {
           </div>
           <button
             onClick={submitOrder}
-            className="px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-md text-sm font-medium"
+            disabled={submitting}
+            className="px-4 py-2 bg-ocean-600 hover:bg-ocean-700 disabled:opacity-60 text-white rounded-md text-sm font-medium"
           >
-            Submit Order
+            {submitting ? "Placing order…" : "Submit Order"}
           </button>
         </div>
       )}
