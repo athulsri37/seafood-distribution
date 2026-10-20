@@ -20,8 +20,8 @@ export default function Reports() {
       <h1 className="text-xl font-bold text-slate-800 mb-4">Reports</h1>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Orders" value={data.total_orders} />
-        <StatCard label="Total Revenue" value={`$${data.total_revenue.toFixed(2)}`} accent="text-green-600" />
+        <StatCard label="Orders (excl. cancelled)" value={data.total_orders} />
+        <StatCard label="Revenue (excl. cancelled)" value={`$${data.total_revenue.toFixed(2)}`} accent="text-green-600" />
         <StatCard label="Customers" value={data.total_customers} />
         <StatCard label="Low Stock Items" value={data.low_stock_count} accent="text-red-600" />
       </div>
@@ -51,7 +51,7 @@ export default function Reports() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-          <h2 className="font-semibold text-slate-700 mb-3">Top Products by Units Sold</h2>
+          <h2 className="font-semibold text-slate-700 mb-3">Top Products by Units Sold (excl. cancelled)</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data.top_products}>
               <XAxis dataKey="product_name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
