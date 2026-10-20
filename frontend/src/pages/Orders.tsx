@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import client, { errorMessage } from "../api/client";
+import { usePagedList } from "../api/usePagedList";
+import LoadMore from "../components/LoadMore";
 import { Order, OrderStatus, Product } from "../types";
 import { useAuth } from "../context/AuthContext";
 
@@ -13,7 +15,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 
 export default function Orders() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const orders = usePagedList<Order>("/orders", "Couldn't load orders. Refresh the page to try again.");
   const [products, setProducts] = useState<Product[]>([]);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [cart, setCart] = useState<Record<number, number>>({});
@@ -21,18 +23,12 @@ export default function Orders() {
   const [submitting, setSubmitting] = useState(false);
   const canManage = user?.role === "ADMIN" || user?.role === "DISTRIBUTOR";
 
-  const loadOrders = async () => {
-    const res = await client.get("/orders");
-    setOrders(res.data);
-  };
-
   const loadProducts = async () => {
     const res = await client.get("/products");
     setProducts(res.data);
   };
 
   useEffect(() => {
-    loadOrders();
     loadProducts();
   }, []);
 
@@ -44,10 +40,10 @@ export default function Orders() {
     setError("");
     setSubmitting(true);
     try {
-      await client.post("/orders", { items });
+      const res = await client.post<Order>("/orders", { items });
       setCart({});
       setShowNewOrder(false);
-      loadOrders();
+      orders.prepend(res.data);
     } catch (err) {
       // Usually another customer bought the last units first; the refreshed stock shows what's left.
       setError(errorMessage(err, "Couldn't place the order. Try again."));
@@ -60,11 +56,13 @@ export default function Orders() {
   const updateStatus = async (orderId: number, status: OrderStatus) => {
     setError("");
     try {
-      await client.patch(`/orders/${orderId}/status`, { status });
+      const res = await client.patch<Order>(`/orders/${orderId}/status`, { status });
+      orders.replace(res.data);
     } catch (err) {
       setError(errorMessage(err, `Couldn't update order #${orderId}. Try again.`));
+      // Someone may have changed it first; show its current state.
+      client.get<Order>(`/orders/${orderId}`).then((res) => orders.replace(res.data), () => undefined);
     }
-    loadOrders();
     loadProducts();
   };
 
@@ -80,6 +78,11 @@ export default function Orders() {
         </button>
       </div>
 
+      {orders.error && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {orders.error}
+        </p>
+      )}
       {error && (
         <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -133,7 +136,7 @@ export default function Orders() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
+            {(orders.items ?? []).map((o) => (
               <tr key={o.id} className="border-t border-slate-100">
                 <td className="px-4 py-2 font-medium">#{o.id}</td>
                 <td className="px-4 py-2">{o.customer.full_name}</td>
@@ -164,8 +167,22 @@ export default function Orders() {
                 )}
               </tr>
             ))}
+            {orders.items === null && !orders.error && (
+              <tr><td colSpan={canManage ? 6 : 5} className="px-4 py-6 text-slate-500">Loading orders…</td></tr>
+            )}
+            {orders.items?.length === 0 && (
+              <tr><td colSpan={canManage ? 6 : 5} className="px-4 py-6 text-slate-500">No orders yet.</td></tr>
+            )}
           </tbody>
         </table>
+        <LoadMore
+          shown={orders.items?.length ?? 0}
+          total={orders.total}
+          hasMore={orders.hasMore}
+          loading={orders.loadingMore}
+          onLoadMore={orders.loadMore}
+          noun="orders"
+        />
       </div>
     </div>
   );

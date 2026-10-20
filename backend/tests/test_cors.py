@@ -61,3 +61,13 @@ def test_wildcard_origin_setting_is_refused(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(RuntimeError, match="CORS_ORIGINS: can't contain"):
         load_settings(env_file=None)
+
+
+def test_configured_origin_can_read_the_total_count_header(
+    client_with_origins: Callable[[str], TestClient],
+) -> None:
+    client = client_with_origins("https://app.example.com")
+
+    response = client.get("/api/health", headers={"Origin": "https://app.example.com"})
+
+    assert "x-total-count" in response.headers["access-control-expose-headers"].lower()

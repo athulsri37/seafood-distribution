@@ -38,8 +38,9 @@ def test_listing_orders_takes_the_same_queries_for_1_or_20_orders(
     add_orders(19)
     with_twenty = queries_for(client, "/api/orders", auth_headers(staff))
 
-    # The user, the orders, then one batch each for customers, items and products.
-    assert with_one == with_twenty == 5
+    # The user, the total count, the page of orders, then one batch each for customers,
+    # items and products.
+    assert with_one == with_twenty == 6
 
 
 def test_getting_an_order_takes_the_same_queries_for_1_or_8_items(

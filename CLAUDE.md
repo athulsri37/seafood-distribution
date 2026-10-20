@@ -253,6 +253,10 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   `selectinload` (see `ORDER_DETAILS` in `routers/orders.py`), so the number of queries
   doesn't grow with the number of rows. `tests/test_query_counts.py` pins these counts;
   add a case there for any new list endpoint.
+- List endpoints that can grow without limit are paged newest first with a cursor:
+  `limit` and `before_id` from `app/core/pagination.py`, ordered by `id DESC`, and
+  `set_total_count()` for the `X-Total-Count` header. The frontend reads them with
+  `usePagedList` and updates rows in place after a change instead of reloading.
 - Filter and count in SQL, never by loading rows into Python. A rule needed both on
   objects and in queries is a `hybrid_property` (see `Product.is_low_stock`).
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or

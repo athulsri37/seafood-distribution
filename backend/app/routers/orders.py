@@ -1,12 +1,13 @@
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import update
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_roles
+from app.core.pagination import BeforeIdParam, LimitParam, set_total_count
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.user import User, UserRole
@@ -71,11 +72,21 @@ def _deduct_stock(db: Session, product_id: int, quantity: int) -> Decimal:
 
 
 @router.get("", response_model=List[OrderOut])
-def list_orders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    query = db.query(Order).options(*ORDER_DETAILS)
+def list_orders(
+    response: Response,
+    limit: int = LimitParam,
+    before_id: Optional[int] = BeforeIdParam,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(Order)
     if current_user.role == UserRole.CUSTOMER:
         query = query.filter(Order.customer_id == current_user.id)
-    orders = query.order_by(Order.created_at.desc()).all()
+    set_total_count(response, query)
+    if before_id is not None:
+        query = query.filter(Order.id < before_id)
+    # Newest first by id, which (unlike created_at) is unique, so pages never overlap.
+    orders = query.options(*ORDER_DETAILS).order_by(Order.id.desc()).limit(limit).all()
     return [_serialize_order(o) for o in orders]
 
 

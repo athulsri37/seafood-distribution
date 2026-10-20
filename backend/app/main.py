@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.pagination import TOTAL_COUNT_HEADER
 from app.routers import auth, products, orders, reports, users
 
 
@@ -21,6 +22,7 @@ def create_app() -> FastAPI:
             allow_credentials=False,
             allow_methods=["GET", "POST", "PATCH", "DELETE"],
             allow_headers=["Authorization", "Content-Type"],
+            expose_headers=[TOTAL_COUNT_HEADER],
         )
 
     app.include_router(auth.router)
