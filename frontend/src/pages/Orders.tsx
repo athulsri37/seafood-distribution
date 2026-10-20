@@ -149,11 +149,14 @@ export default function Orders() {
                 {canManage && (
                   <td className="px-4 py-2">
                     <select
+                      aria-label={`Status of order #${o.id}`}
                       value={o.status}
+                      disabled={o.next_statuses.length === 0}
+                      title={o.next_statuses.length === 0 ? `${o.status} is final` : undefined}
                       onChange={(e) => updateStatus(o.id, e.target.value as OrderStatus)}
-                      className="border border-slate-300 rounded-md text-xs px-2 py-1"
+                      className="border border-slate-300 rounded-md text-xs px-2 py-1 disabled:bg-slate-50 disabled:text-slate-500"
                     >
-                      {["PENDING", "CONFIRMED", "IN_TRANSIT", "DELIVERED", "CANCELLED"].map((s) => (
+                      {[o.status, ...o.next_statuses].map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
