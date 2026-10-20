@@ -22,6 +22,21 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    # Comma-separated browser origins allowed to call the API from another site, for
+    # example "https://app.example.com". Empty by default: the frontend reaches the API
+    # through its own server's /api proxy, which needs no cross-origin access.
+    cors_origins: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip().rstrip("/") for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def _no_wildcard_origin(cls, value: str) -> str:
+        if "*" in value:
+            raise ValueError("can't contain '*'; list each allowed origin, separated by commas")
+        return value
 
     @field_validator("jwt_secret_key")
     @classmethod
