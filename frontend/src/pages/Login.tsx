@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@seafoodco.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -57,7 +57,7 @@ export default function Login() {
           No account? <Link to="/register" className="text-ocean-600 font-medium">Register</Link>
         </p>
         <p className="text-xs text-slate-400 mt-3">
-          Demo: admin@seafoodco.com / Admin123!
+          Trying the demo? Run <code>python seed.py</code> in <code>backend/</code>; it prints the demo logins.
         </p>
       </form>
     </div>
