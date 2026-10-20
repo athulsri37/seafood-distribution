@@ -68,5 +68,5 @@ export interface DashboardSummary {
   total_customers: number;
   low_stock_count: number;
   sales_by_status: { status: string; order_count: number; total_revenue: number }[];
-  top_products: { product_name: string; units_sold: number; revenue: number }[];
+  top_products: { product_name: string; sku: string; units_sold: number; revenue: number }[];
 }

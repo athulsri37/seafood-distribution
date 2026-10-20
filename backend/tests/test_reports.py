@@ -126,3 +126,23 @@ def test_status_breakdown_still_shows_cancelled_orders(
     assert by_status["CANCELLED"]["order_count"] == 1
     assert by_status["CANCELLED"]["total_revenue"] == pytest.approx(40.0)
     assert by_status["PENDING"]["order_count"] == 1
+
+
+def test_top_products_keeps_products_that_share_a_name_apart(
+    client: TestClient,
+    admin: User,
+    customer: User,
+    make_product: Callable[..., Product],
+    auth_headers: Headers,
+) -> None:
+    # Names aren't unique (SKUs are), so two suppliers' "Shrimp" are different products.
+    gulf = make_product(name="Shrimp", price_per_unit="10.00")
+    tiger = make_product(name="Shrimp", price_per_unit="20.00")
+    place_order(client, auth_headers(customer), (gulf, 3), (tiger, 1))
+
+    body = client.get("/api/reports/dashboard", headers=auth_headers(admin)).json()
+
+    assert [(p["product_name"], p["sku"], p["units_sold"], p["revenue"]) for p in body["top_products"]] == [
+        ("Shrimp", gulf.sku, 3, 30.0),
+        ("Shrimp", tiger.sku, 1, 20.0),
+    ]
