@@ -200,7 +200,7 @@ anywhere in the repository. To get new ones, run `python seed.py --reset-demo-pa
 
 **Paging.** `GET /api/orders` and `GET /api/users` return the newest 50 by default.
 Pass `limit` (up to 100) and `before_id` (the last id you have) to get the next page.
-`GET /api/products` returns the whole catalogue, up to 500 products. Every list sets an
+`GET /api/products` returns the whole catalogue alphabetically, up to 500 products. Every list sets an
 `X-Total-Count` header with the number of matching items.
 
 Full interactive API documentation is available at `/docs` once the backend is running.
