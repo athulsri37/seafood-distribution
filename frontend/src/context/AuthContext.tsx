@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import client from "../api/client";
+import client, { LOGIN_URL } from "../api/client";
 import { RegisterData, User } from "../types";
 
 interface AuthContextValue {
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const res = await client.post("/auth/login", { email, password });
+    const res = await client.post(LOGIN_URL, { email, password });
     persist(res.data.access_token, res.data.user);
   };
 
