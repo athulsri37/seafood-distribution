@@ -72,7 +72,6 @@ def test_top_products_lists_at_most_five(
     assert len(body["top_products"]) == 5
 
 
-@pytest.mark.xfail(reason="B13: revenue includes cancelled orders")
 def test_revenue_excludes_cancelled_orders(
     client: TestClient,
     admin: User,
@@ -88,3 +87,42 @@ def test_revenue_excludes_cancelled_orders(
     body = client.get("/api/reports/dashboard", headers=auth_headers(admin)).json()
 
     assert body["total_revenue"] == pytest.approx(10.0)
+
+
+def test_cancelled_orders_are_left_out_of_order_count_and_top_products(
+    client: TestClient,
+    admin: User,
+    customer: User,
+    make_product: Callable[..., Product],
+    auth_headers: Headers,
+) -> None:
+    salmon = make_product(name="Salmon", price_per_unit="10.00")
+    lobster = make_product(name="Lobster", price_per_unit="30.00")
+    place_order(client, auth_headers(customer), (salmon, 2))
+    big_cancelled = place_order(client, auth_headers(customer), (lobster, 50)).json()["id"]
+    client.patch(f"/api/orders/{big_cancelled}/status", json={"status": "CANCELLED"}, headers=auth_headers(admin))
+
+    body = client.get("/api/reports/dashboard", headers=auth_headers(admin)).json()
+
+    assert body["total_orders"] == 1
+    assert [(p["product_name"], p["units_sold"]) for p in body["top_products"]] == [("Salmon", 2)]
+
+
+def test_status_breakdown_still_shows_cancelled_orders(
+    client: TestClient,
+    admin: User,
+    customer: User,
+    make_product: Callable[..., Product],
+    auth_headers: Headers,
+) -> None:
+    product = make_product(price_per_unit="10.00")
+    place_order(client, auth_headers(customer), (product, 1))
+    cancelled = place_order(client, auth_headers(customer), (product, 4)).json()["id"]
+    client.patch(f"/api/orders/{cancelled}/status", json={"status": "CANCELLED"}, headers=auth_headers(admin))
+
+    body = client.get("/api/reports/dashboard", headers=auth_headers(admin)).json()
+
+    by_status = {row["status"]: row for row in body["sales_by_status"]}
+    assert by_status["CANCELLED"]["order_count"] == 1
+    assert by_status["CANCELLED"]["total_revenue"] == pytest.approx(40.0)
+    assert by_status["PENDING"]["order_count"] == 1

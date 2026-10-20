@@ -4,12 +4,16 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_roles
-from app.models.order import Order, OrderItem
+from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.user import User, UserRole
 from app.schemas.report import DashboardSummary, SalesByStatus, TopProduct
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+# Cancelled orders never count as sales: revenue, order totals and top products leave them
+# out. Only the status breakdown includes them, so cancellations stay visible.
+NOT_CANCELLED = Order.status != OrderStatus.CANCELLED
 
 
 @router.get("/dashboard", response_model=DashboardSummary)
@@ -17,8 +21,10 @@ def dashboard_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)),
 ):
-    total_orders = db.query(func.count(Order.id)).scalar() or 0
-    total_revenue = db.query(func.coalesce(func.sum(Order.total_amount), 0)).scalar() or 0
+    total_orders = db.query(func.count(Order.id)).filter(NOT_CANCELLED).scalar() or 0
+    total_revenue = (
+        db.query(func.coalesce(func.sum(Order.total_amount), 0)).filter(NOT_CANCELLED).scalar() or 0
+    )
     total_customers = (
         db.query(func.count(User.id)).filter(User.role == UserRole.CUSTOMER).scalar() or 0
     )
@@ -42,6 +48,8 @@ def dashboard_summary(
             func.coalesce(func.sum(OrderItem.quantity * OrderItem.unit_price), 0).label("revenue"),
         )
         .join(OrderItem, OrderItem.product_id == Product.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(NOT_CANCELLED)
         .group_by(Product.name)
         .order_by(func.sum(OrderItem.quantity).desc())
         .limit(5)
