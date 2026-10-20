@@ -62,7 +62,7 @@ export default function Inventory() {
               <th className="px-4 py-2">Product</th>
               <th className="px-4 py-2">SKU</th>
               <th className="px-4 py-2">Species</th>
-              <th className="px-4 py-2">Price / {"{unit}"}</th>
+              <th className="px-4 py-2">Price</th>
               <th className="px-4 py-2">Stock</th>
               <th className="px-4 py-2">Location</th>
               {canManage && <th className="px-4 py-2">Adjust</th>}
