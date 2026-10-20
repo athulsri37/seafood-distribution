@@ -11,6 +11,7 @@ class SalesByStatus(BaseModel):
 
 class TopProduct(BaseModel):
     product_name: str
+    sku: str
     units_sold: int
     revenue: float
 

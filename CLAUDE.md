@@ -119,6 +119,17 @@ is a problem that blocks the item (for example, tests can't run at all). Fix tha
 the same branch, add it to the backlog as fixed by this PR, and explain it under
 "Decisions I made".
 
+If the PRs your branch was built on were squash-merged *and* `main` has moved on in other
+ways, "keep your side" would undo those other changes. Instead, replay only your own
+commits onto `origin/main` in a temporary branch (`git cherry-pick`), resolve and verify
+it there (tests and build), then on your real branch run `git merge --no-commit origin/main`,
+`git read-tree --reset -u <temporary branch>` and commit. The result is exactly the
+verified tree, with no force-push. Delete the temporary branch afterwards.
+
+PRs that edit neighbouring rows of `docs/backlog.md` conflict, because git treats adjacent
+line changes as overlapping. When items' rows are next to each other, open their PRs one
+after another, or expect to resolve the second.
+
 Several open PRs that each delete a bullet from the same short list (such as "Known
 traps" below) conflict, because their deletions touch adjacent lines. Resolve by keeping
 every deletion and every addition from both sides, then check no fixed item's bullet

@@ -43,20 +43,22 @@ def dashboard_summary(
     top_rows = (
         db.query(
             Product.name,
+            Product.sku,
             func.coalesce(func.sum(OrderItem.quantity), 0).label("units"),
             func.coalesce(func.sum(OrderItem.quantity * OrderItem.unit_price), 0).label("revenue"),
         )
         .join(OrderItem, OrderItem.product_id == Product.id)
         .join(Order, Order.id == OrderItem.order_id)
         .filter(NOT_CANCELLED)
-        .group_by(Product.name)
-        .order_by(func.sum(OrderItem.quantity).desc())
+        # By product, not by name: names aren't unique, so grouping by name merged products.
+        .group_by(Product.id, Product.name, Product.sku)
+        .order_by(func.sum(OrderItem.quantity).desc(), Product.id)
         .limit(5)
         .all()
     )
     top_products = [
-        TopProduct(product_name=name, units_sold=int(units), revenue=float(revenue))
-        for name, units, revenue in top_rows
+        TopProduct(product_name=name, sku=sku, units_sold=int(units), revenue=float(revenue))
+        for name, sku, units, revenue in top_rows
     ]
 
     return DashboardSummary(
