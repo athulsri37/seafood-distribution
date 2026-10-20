@@ -181,6 +181,8 @@ anywhere in the repository. To get new ones, run `python seed.py --reset-demo-pa
 
 - `POST /api/auth/register` / `POST /api/auth/login` — authentication. Sign-up creates
   customer accounts only; asking for another role returns 403.
+- `POST /api/auth/token` — the same login as a form (`username` is the email), for the
+  Authorize button in the interactive docs at `/docs`
 - `GET/POST /api/products` — inventory listing & creation
 - `PATCH /api/products/{id}` — product edits, including setting stock to a counted total
 - `POST /api/products/{id}/stock-adjustments` — add or remove units (`{"change": -10}`);

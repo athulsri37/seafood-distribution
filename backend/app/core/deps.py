@@ -6,7 +6,9 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# Swagger UI's Authorize button posts a form to tokenUrl, so it must be the OAuth2 form
+# endpoint, not the JSON `/login` the frontend uses.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 
 def get_current_user(

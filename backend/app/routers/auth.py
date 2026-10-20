@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -35,14 +36,30 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     return Token(access_token=token, user=UserOut.model_validate(user))
 
 
-@router.post("/login", response_model=Token)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
-    if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+def _authenticate(db: Session, email: str, password: str) -> Token:
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=401, detail="Invalid email or password", headers={"WWW-Authenticate": "Bearer"}
+        )
 
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     return Token(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.post("/login", response_model=Token)
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    return _authenticate(db, payload.email, payload.password)
+
+
+@router.post("/token", response_model=Token)
+def token(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """The OAuth2 password flow, which Swagger UI's Authorize button uses.
+
+    Same check as `/login`, but it takes a form with the email in `username`, as the OAuth2
+    spec requires. The app itself uses `/login`.
+    """
+    return _authenticate(db, form.username, form.password)
 
 
 @router.get("/me", response_model=UserOut)
