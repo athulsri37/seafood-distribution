@@ -239,6 +239,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   - Lock a row with `.with_for_update()` when a decision depends on its current state
     (for example, "only restore stock if the order isn't already cancelled").
   - Back invariants with a database constraint as well (`quantity_on_hand >= 0`).
+  - Clients send changes, not new totals: stock goes up or down through
+    `POST /api/products/{id}/stock-adjustments`. `PATCH quantity_on_hand` is only for
+    setting a counted total, which deliberately replaces the value.
   - Test them with `send_simultaneously()` in `tests/helpers.py`, which fires real
     concurrent requests at the API (examples in `tests/test_order_concurrency.py`).
 - Money uses `Decimal` / `Numeric`, never `float` arithmetic.
