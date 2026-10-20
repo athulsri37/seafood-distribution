@@ -63,7 +63,7 @@ export default function Reports() {
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={topProducts}>
               <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
-              <YAxis />
+              <YAxis allowDecimals={false} />
               <Tooltip />
               <Bar dataKey="units_sold" fill="#1c6e8c" radius={[4, 4, 0, 0]} />
             </BarChart>
