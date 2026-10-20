@@ -164,11 +164,9 @@ GitHub Actions runs both on every pull request (`.github/workflows/ci.yml`).
 
 ### Demo accounts (after seeding)
 
-| Role        | Email                     | Password        |
-|-------------|----------------------------|------------------|
-| Admin       | admin@seafoodco.com        | Admin123!        |
-| Distributor | distributor@seafoodco.com  | Distributor123!  |
-| Customer    | customer@example.com       | Customer123!     |
+`python seed.py` creates three demo accounts (admin, distributor and customer) and prints
+their emails with random passwords. The passwords are shown only then and aren't stored
+anywhere in the repository. To get new ones, run `python seed.py --reset-demo-passwords`.
 
 ## API Endpoints (selected)
 

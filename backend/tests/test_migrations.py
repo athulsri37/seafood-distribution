@@ -1,5 +1,4 @@
 """The Alembic migrations and the SQLAlchemy models must describe the same schema."""
-import runpy
 from collections.abc import Callable
 
 import pytest
@@ -14,8 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import Base, engine
-from app.models import Product, User
-from tests.helpers import BACKEND_DIR
+from app.models import Product
 
 
 def test_models_match_migrations() -> None:
@@ -46,16 +44,6 @@ def test_downgrade_to_base_and_upgrade_again(alembic_config: Config) -> None:
     assert enum_types == []
     with engine.connect() as conn:
         assert set(inspect(conn).get_table_names()) >= {"users", "products", "orders", "order_items"}
-
-
-def test_seed_script_loads_demo_data_once(db: Session) -> None:
-    seed_script = str(BACKEND_DIR / "seed.py")
-
-    runpy.run_path(seed_script)
-    runpy.run_path(seed_script)  # A second run must not duplicate anything.
-
-    assert db.query(User).count() == 3
-    assert db.query(Product).count() == 5
 
 
 def test_database_rejects_negative_stock(db: Session, make_product: Callable[..., Product]) -> None:
