@@ -15,6 +15,14 @@ export default function Reports() {
 
   if (!data) return <p className="text-slate-500">Loading reports...</p>;
 
+  // Product names aren't unique; add the SKU only where two bars would share a label.
+  const nameCounts = new Map<string, number>();
+  data.top_products.forEach((p) => nameCounts.set(p.product_name, (nameCounts.get(p.product_name) ?? 0) + 1));
+  const topProducts = data.top_products.map((p) => ({
+    ...p,
+    label: (nameCounts.get(p.product_name) ?? 0) > 1 ? `${p.product_name} (${p.sku})` : p.product_name,
+  }));
+
   return (
     <div>
       <h1 className="text-xl font-bold text-slate-800 mb-4">Reports</h1>
@@ -53,8 +61,8 @@ export default function Reports() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
           <h2 className="font-semibold text-slate-700 mb-3">Top Products by Units Sold (excl. cancelled)</h2>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.top_products}>
-              <XAxis dataKey="product_name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
+            <BarChart data={topProducts}>
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
               <YAxis />
               <Tooltip />
               <Bar dataKey="units_sold" fill="#1c6e8c" radius={[4, 4, 0, 0]} />
