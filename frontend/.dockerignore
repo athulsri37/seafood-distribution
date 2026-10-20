@@ -1,0 +1,18 @@
+# Keep the image to what the dev server needs. Anything matched here never reaches
+# `COPY . .`, so local secrets and machine-specific files can't leak into an image.
+
+# Secrets and local settings.
+.env
+.env.*
+
+# Dependencies are installed inside the image by `npm install`; the host's copy has
+# binaries for the host OS (for example Windows-only esbuild) and would overwrite them.
+node_modules/
+
+# Build output and logs.
+dist/
+*.log
+
+# Build files.
+Dockerfile
+.dockerignore
