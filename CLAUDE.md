@@ -78,8 +78,6 @@ truncates every table after each test.
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
 - `backend/` has no `.dockerignore`, so `docker build` copies local `.venv/` and `.env`
   into the image (B29).
-- Editing a product to negative stock returns a 500: the database's non-negative stock
-  constraint rejects it, but `ProductUpdate` doesn't validate it yet (B10).
 - Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
@@ -216,6 +214,12 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
   Business rules live in the backend, never only in the frontend.
 - Separate input and output schemas. Never return `hashed_password` or internal-only
   fields. Validate input with Pydantic (`Field(gt=0)` and so on) rather than by hand.
+- Input schemas must reject anything the database would refuse, so bad input is a 422
+  naming the field, never a 500. That means bounds that match the column (see `Price` and
+  `Count` in `schemas/product.py`), `min_length=1` for required text, and
+  `str_strip_whitespace=True`. For partial updates (PATCH), reject explicit `null` for
+  NOT NULL columns with a `field_validator`: it only runs for fields the request sent.
+- New schemas use Pydantic v2's `model_config = ConfigDict(...)`, not `class Config` (B23).
 - Commit once per request. Don't commit inside loops. Anything that reads then writes
   shared data (such as stock) must be safe under concurrent requests:
   - Change counters in SQL, never in Python: a conditional

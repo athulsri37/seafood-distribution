@@ -20,7 +20,7 @@ Priority items are the ones the resume claims depend on. Do them first.
 | B5  | Security    | CORS allows `*` with credentials (`main.py`). | Allow only configured frontend origins. | Open |
 | B6  | Security    | Customers can see warehouse locations and exact stock levels. | Return a customer-facing product schema without internal fields. | Open |
 | B9  | Correctness | The stock ±10 buttons send a total calculated in the browser, so concurrent clicks lose updates (`Inventory.tsx`). | Send the change and apply it on the server. | Open |
-| B10 | Correctness | `ProductUpdate` has no validation, so negative prices or stock are accepted. | Add `gt=0` / `ge=0` rules. | Open. Since #6 the database rejects negative stock, so such an edit now returns 500 instead of saving; validation should turn that into 422. |
+| B10 | Correctness | `ProductUpdate` has no validation, so negative prices or stock are accepted. | Add `gt=0` / `ge=0` rules. | Fixed (#9): create and edit reject negative or zero prices, negative counts, values beyond the column limits, prices with more than 2 decimals, blank text and explicit nulls for required fields, all with a 422 naming the field. Text is trimmed. |
 | B11 | Correctness | Deleting a product that has been ordered fails with a 500 (foreign key). | Soft delete with an `is_active` flag. | Open |
 | B12 | Correctness | Order totals are added up as `float`. | Use `Decimal` throughout. | Open |
 | B13 | Correctness | Report revenue includes cancelled orders. | Exclude `CANCELLED` from revenue. | Open |
