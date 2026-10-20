@@ -41,6 +41,10 @@ cancel (which restores stock) only before IN_TRANSIT, and DELIVERED and CANCELLE
 The API returns each order's `next_statuses`, and the frontend offers only those. Change
 the rules in that one map, never in the router or the UI.
 
+Reports treat cancelled orders as never sold: revenue, order totals and top products filter
+with `NOT_CANCELLED` in `app/routers/reports.py`; only the status breakdown includes them.
+Any new sales figure must use the same filter.
+
 ### Running locally
 
 ```bash
@@ -115,6 +119,11 @@ Add it to `docs/backlog.md` as a new item and mention it in the PR. The one exce
 is a problem that blocks the item (for example, tests can't run at all). Fix that in
 the same branch, add it to the backlog as fixed by this PR, and explain it under
 "Decisions I made".
+
+Several open PRs that each delete a bullet from the same short list (such as "Known
+traps" below) conflict, because their deletions touch adjacent lines. Resolve by keeping
+every deletion and every addition from both sides, then check no fixed item's bullet
+survived.
 
 If your branch needs another open PR's changes, merge that PR's branch into yours,
 say so under "Interactions with open PRs", and ask for the other PR to be merged first.
