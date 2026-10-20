@@ -1,37 +1,14 @@
-"""Orders and cancellations that happen at the same moment must never oversell or corrupt stock.
-
-Each request runs in its own thread with its own client, so the API handles them
-concurrently against PostgreSQL, the way simultaneous customers would.
-"""
+"""Orders and cancellations that happen at the same moment must never oversell or corrupt stock."""
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
 
 from fastapi.testclient import TestClient
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.main import app
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.user import User, UserRole
-from tests.helpers import Headers, place_order
-
-Request = tuple[str, str, dict[str, str], dict]  # method, url, headers, json body
-
-
-def send_simultaneously(requests: list[Request]) -> list[int]:
-    """Send every request at the same moment and return the status codes in order."""
-    barrier = Barrier(len(requests))
-
-    def send(request: Request) -> int:
-        method, url, headers, body = request
-        with TestClient(app) as client:
-            barrier.wait()
-            return client.request(method, url, headers=headers, json=body).status_code
-
-    with ThreadPoolExecutor(max_workers=len(requests)) as pool:
-        return list(pool.map(send, requests))
+from tests.helpers import Headers, Request, place_order, send_simultaneously
 
 
 def order_request(headers: dict[str, str], *lines: tuple[Product, int]) -> Request:

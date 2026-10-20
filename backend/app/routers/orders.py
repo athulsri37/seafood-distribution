@@ -11,6 +11,7 @@ from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.user import User, UserRole
 from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderItemOut
+from app.services.orders import next_statuses, transition_error
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -29,6 +30,7 @@ def _serialize_order(order: Order) -> OrderOut:
     return OrderOut(
         id=order.id,
         status=order.status,
+        next_statuses=list(next_statuses(order.status)),
         total_amount=float(order.total_amount),
         customer=order.customer,
         items=items,
@@ -116,13 +118,19 @@ def update_order_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.DISTRIBUTOR)),
 ):
-    # Lock the order so simultaneous status changes run one at a time; otherwise two
-    # cancellations could both see it as not cancelled and restore the stock twice.
+    # Lock the order so simultaneous status changes run one at a time and each one
+    # checks the rules against the status the previous one left behind.
     order = db.query(Order).filter(Order.id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if payload.status == OrderStatus.CANCELLED and order.status != OrderStatus.CANCELLED:
+    if payload.status == order.status:
+        # Setting the current status again (a retry, or a second click) changes nothing.
+        return _serialize_order(order)
+    if payload.status not in next_statuses(order.status):
+        raise HTTPException(status_code=409, detail=transition_error(order.id, order.status, payload.status))
+
+    if payload.status == OrderStatus.CANCELLED:
         for item in sorted(order.items, key=lambda i: i.product_id):
             # Add in SQL, not in Python, so stock deducted by concurrent orders isn't overwritten.
             db.execute(

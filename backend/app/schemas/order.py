@@ -30,6 +30,8 @@ class OrderItemOut(BaseModel):
 class OrderOut(BaseModel):
     id: int
     status: OrderStatus
+    # Statuses this order may move to next. Only staff can change a status.
+    next_statuses: List[OrderStatus]
     total_amount: float
     customer: UserOut
     items: List[OrderItemOut]
