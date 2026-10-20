@@ -19,8 +19,10 @@ if not TEST_DATABASE_URL:
         "(see README, 'Running the tests').",
         returncode=4,
     )
-# The app builds its engine from DATABASE_URL at import time, so set it before importing.
+# The app reads its settings at import time, so set them before importing. Both override
+# anything in a local backend/.env, so tests never use real credentials.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["JWT_SECRET_KEY"] = "test-only-jwt-secret-not-used-anywhere-else"
 
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402

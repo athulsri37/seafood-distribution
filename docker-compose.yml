@@ -4,7 +4,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: seafood
-      POSTGRES_PASSWORD: seafood_dev_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
       POSTGRES_DB: seafood_distribution
     ports:
       - "5432:5432"
@@ -16,8 +16,8 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: postgresql://seafood:seafood_dev_pw@postgres:5432/seafood_distribution
-      JWT_SECRET: change_this_secret_in_production
+      DATABASE_URL: postgresql://seafood:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}@postgres:5432/seafood_distribution
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env (see .env.example)}
       PORT: 4000
     depends_on:
       - postgres

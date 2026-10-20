@@ -47,7 +47,7 @@ the rules in that one map, never in the router or the UI.
 # Backend (from backend/)
 python -m venv venv && venv\Scripts\activate      # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env                              # point DATABASE_URL at your Postgres
+cp .env.example .env                              # DATABASE_URL and JWT_SECRET_KEY are required
 alembic upgrade head                              # create or update the schema
 python seed.py                                    # demo users and products
 uvicorn app.main:app --reload                     # http://localhost:8000/docs
@@ -76,7 +76,6 @@ truncates every table after each test.
 ### Known traps (until their backlog items are fixed)
 
 - `docker compose up` does not work: wrong backend port and wrong proxy target (B17).
-- Docker's `JWT_SECRET` isn't read by the app, which falls back to the default secret (B2).
 - `bcrypt` is pinned to 4.0.1 because passlib 1.7.4 breaks on newer versions (hashing
   raises `ValueError` on 5.x). Don't unpin it without replacing passlib.
 - Pydantic models still use the v1-style `class Config`, which prints deprecation
@@ -237,7 +236,9 @@ tree matches your branch's tree from before the merge. Never force-push to avoid
 - Status codes: 400 broken business rule, 401 not authenticated, 403 wrong role or
   owner, 404 not found, 409 conflict (state or stock), 422 schema validation (FastAPI's
   default). Error `detail` messages say what went wrong in plain words.
-- Secrets and settings come from `core/config.py` (environment). Never hard-code them.
+- Secrets and settings come from `core/config.py` (environment). Never hard-code them, and
+  never give a credential a default value: the app must refuse to start without it.
+  `tests/conftest.py` sets test-only values before importing the app.
 - Use parameterised queries only. No SQL built from strings.
 
 **Database changes**
