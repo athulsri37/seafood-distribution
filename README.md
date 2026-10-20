@@ -60,8 +60,12 @@ seafood-distribution-platform/
 ### Option 1: Docker (recommended)
 
 ```bash
+cp .env.example .env            # set POSTGRES_PASSWORD and JWT_SECRET_KEY
 docker compose up --build
 ```
+
+Compose refuses to start until both values are set. There are no built-in defaults for
+credentials.
 
 - Frontend: http://localhost:5173
 - Backend API docs (Swagger): http://localhost:8000/docs
@@ -84,7 +88,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env            # set DATABASE_URL (and a random JWT_SECRET_KEY) for your Postgres
+cp .env.example .env            # set DATABASE_URL and JWT_SECRET_KEY (both required)
 alembic upgrade head            # create or update the database schema
 python seed.py                  # optional: creates demo users & products
 uvicorn app.main:app --reload
@@ -96,6 +100,18 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Required settings
+
+The backend won't start without these, and it lists any that are missing:
+
+| Setting | What it is |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection URL, including your database password |
+| `JWT_SECRET_KEY` | Signs login tokens. At least 32 characters; generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+
+Set them in `backend/.env` (git-ignored) or as environment variables. The old example
+secret that used to be in this repo is refused.
 
 ### Database migrations
 
