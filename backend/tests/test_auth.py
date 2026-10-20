@@ -131,3 +131,27 @@ def test_token_signed_with_the_old_published_secret_is_rejected(client: TestClie
     response = client.get("/api/users", headers={"Authorization": f"Bearer {forged}"})
 
     assert response.status_code == 401
+
+
+def swagger_token_url(client: TestClient) -> str:
+    """Where Swagger UI's Authorize button sends the username and password."""
+    schemes = client.get("/openapi.json").json()["components"]["securitySchemes"]
+    return schemes["OAuth2PasswordBearer"]["flows"]["password"]["tokenUrl"]
+
+
+def test_swagger_authorize_gets_a_token_that_works(client: TestClient, customer: User) -> None:
+    response = client.post(
+        swagger_token_url(client), data={"username": customer.email, "password": DEFAULT_PASSWORD}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["token_type"] == "bearer"
+    me = client.get(ME_URL, headers={"Authorization": f"Bearer {response.json()['access_token']}"})
+    assert me.json()["id"] == customer.id
+
+
+def test_swagger_authorize_rejects_a_wrong_password(client: TestClient, customer: User) -> None:
+    response = client.post(swagger_token_url(client), data={"username": customer.email, "password": "wrong-password"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
