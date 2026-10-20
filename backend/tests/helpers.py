@@ -1,12 +1,15 @@
 """Small helpers shared by test modules. Fixtures live in conftest.py."""
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from httpx import Response
 
+from app.core.database import engine
 from app.main import app
 from app.models.product import Product
 from app.models.user import User
@@ -40,3 +43,18 @@ def send_simultaneously(requests: list[Request]) -> list[int]:
 
     with ThreadPoolExecutor(max_workers=len(requests)) as pool:
         return list(pool.map(send, requests))
+
+
+@contextmanager
+def capture_queries() -> Iterator[list[str]]:
+    """Collect the SQL statements run inside the block, in order."""
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, parameters, context, executemany) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)

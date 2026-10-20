@@ -29,8 +29,7 @@ def dashboard_summary(
         db.query(func.count(User.id)).filter(User.role == UserRole.CUSTOMER).scalar() or 0
     )
 
-    products = db.query(Product).all()
-    low_stock_count = sum(1 for p in products if p.is_low_stock)
+    low_stock_count = db.query(func.count(Product.id)).filter(Product.is_low_stock).scalar() or 0
 
     status_rows = (
         db.query(Order.status, func.count(Order.id), func.coalesce(func.sum(Order.total_amount), 0))

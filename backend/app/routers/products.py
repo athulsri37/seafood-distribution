@@ -19,10 +19,9 @@ def list_products(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(Product)
-    products = query.all()
     if low_stock_only:
-        products = [p for p in products if p.is_low_stock]
-    return products
+        query = query.filter(Product.is_low_stock)
+    return query.all()
 
 
 @router.post("", response_model=ProductOut, status_code=201)
